@@ -42,7 +42,7 @@ html[dir="rtl"] {
   --color-gold: var(--gold);
   --color-danger: var(--danger);
   --font-sans: var(--font-body);
-  --font-mono: var(--font-mono);
+  --font-mono: "JetBrains Mono", "Consolas", "Courier New", monospace;
   
   /* Custom Animations */
   --animate-float: float 6s ease-in-out infinite;
@@ -289,6 +289,9 @@ html[dir="rtl"] .page-title {
   :root[data-theme="system"] .field-control {
     background: rgba(15, 23, 42, 0.5);
   }
+  :root[data-theme="system"] .field-control:focus {
+    background: #0f172a;
+  }
 }
 
 /* Base loading spinner utility */
@@ -303,11 +306,6 @@ html[dir="rtl"] .page-title {
 
 @keyframes spin {
   to { transform: rotate(360deg); }
-}
-
-.field-control:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 4px rgba(15, 143, 126, 0.15);
 }
 
 .action-button,

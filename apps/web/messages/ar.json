@@ -224,5 +224,15 @@
   "uploadNotesTitle": "ملاحظات الرفع",
   "svgBlueprintReady": "مخطط SVG جاهز",
   "noDocuments": "لم يتم رفع أي ملفات بعد.",
-  "noUsers": "لا يوجد مستخدمون مسجلون بعد."
+  "noUsers": "لا يوجد مستخدمون مسجلون بعد.",
+  "uploadDropzoneTitle": "اسحب الملفات وأفلتها هنا، أو",
+  "uploadDropzoneBrowse": "تصفّح",
+  "uploadDropzoneFormats": "يدعم PDF و DOCX و XLSX و TXT و CSV و PNG و JPG و WEBP حتى 50 ميغابايت",
+  "uploadUploading": "جارٍ رفع الملفات...",
+  "uploadUploadingDocument": "جارٍ رفع الملف...",
+  "uploadRecentUploads": "آخر الملفات المرفوعة",
+  "uploadSelectFile": "اختر ملفاً قبل الرفع.",
+  "uploadFileNotSupported": "هذا الملف غير مدعوم.",
+  "uploadFailed": "فشل الرفع.",
+  "uploadWarningsTitle": "ملاحظات الرفع"
 }

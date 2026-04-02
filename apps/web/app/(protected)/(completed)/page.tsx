@@ -1,17 +1,15 @@
 import { APP_ROUTES } from "@zootopia/shared-config";
 import Link from "next/link";
-import { 
-  FileText, 
-  BrainCircuit, 
-  PieChart, 
-  UploadCloud, 
-  Settings2, 
-  Activity, 
+import {
+  FileText,
+  BrainCircuit,
+  PieChart,
+  UploadCloud,
+  Settings2,
   Database,
   ChevronRight,
   MonitorPlay,
-  FileCheck,
-  Server
+  FileCheck
 } from "lucide-react";
 
 import { getRequestUiContext } from "@/lib/server/request-context";

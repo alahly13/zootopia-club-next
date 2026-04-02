@@ -3,6 +3,7 @@
 # dependencies
 /node_modules
 apps/web/node_modules/
+.git-acl-backup-*/
 /.pnp
 .pnp.*
 .yarn/*

@@ -1,5 +1,5 @@
 import { APP_ROUTES, getModelsForTool } from "@zootopia/shared-config";
-import { BrainCircuit, Sparkles } from "lucide-react";
+import { BrainCircuit } from "lucide-react";
 
 import { AssessmentStudio } from "@/components/assessment/assessment-studio";   
 import { getRequestUiContext } from "@/lib/server/request-context";

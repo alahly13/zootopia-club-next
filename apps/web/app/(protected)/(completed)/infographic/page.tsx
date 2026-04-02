@@ -1,5 +1,5 @@
 import { APP_ROUTES, getModelsForTool } from "@zootopia/shared-config";
-import { PieChart, Sparkles } from "lucide-react";
+import { PieChart } from "lucide-react";
 
 import { InfographicStudio } from "@/components/infographic/infographic-studio";
 import { getRequestUiContext } from "@/lib/server/request-context";

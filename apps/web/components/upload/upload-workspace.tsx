@@ -51,7 +51,7 @@ export function UploadWorkspace({
     const file = form.get("file");
 
     if (!(file instanceof File)) {
-      setError("Select a file before uploading.");
+      setError(messages.uploadSelectFile);
       return;
     }
 
@@ -65,13 +65,14 @@ export function UploadWorkspace({
       setError(
         validationError instanceof Error
           ? validationError.message
-          : "This file is not supported.",
+          : messages.uploadFileNotSupported,
       );
       return;
     }
 
     setPending(true);
     setError(null);
+    setWarnings([]);
 
     try {
       const requestBody = new FormData();
@@ -93,7 +94,7 @@ export function UploadWorkspace({
       event.currentTarget.reset();
     } catch (uploadError) {
       setError(
-        uploadError instanceof Error ? uploadError.message : "Upload failed.",
+        uploadError instanceof Error ? uploadError.message : messages.uploadFailed,
       );
     } finally {
       setPending(false);
@@ -104,7 +105,10 @@ export function UploadWorkspace({
     <div className="w-full max-w-3xl mx-auto rounded-3xl border border-border bg-card text-card-foreground shadow-2xl overflow-hidden flex flex-col my-8">
       {/* Header */}
       <div className="px-6 py-5 border-b border-border/50">
-        <h2 className="text-xl font-semibold text-foreground">Upload files</h2>
+        <h2 className="text-xl font-semibold text-foreground">{title || messages.uploadWorkspaceTitle}</h2>
+        {description && (
+          <p className="text-sm text-foreground-muted mt-1">{description}</p>
+        )}
       </div>
 
       <div className="p-6 md:p-8 space-y-8 bg-background/50">
@@ -137,11 +141,19 @@ export function UploadWorkspace({
             </div>
 
             <h3 className="text-base font-medium text-foreground">
-              Drag and drop files here, or <span className="text-accent underline underline-offset-4 decoration-accent/30 group-hover:decoration-accent transition-colors">browse</span>
+              {messages.uploadDropzoneTitle}{" "}
+              <span className="text-accent underline underline-offset-4 decoration-accent/30 group-hover:decoration-accent transition-colors">{messages.uploadDropzoneBrowse}</span>
             </h3>
             <p className="text-sm text-foreground-muted">
-              Supports .pdf, .docx, .xlsx, .png, .jpg up to 10MB
+              {messages.uploadDropzoneFormats}
             </p>
+            <div className="flex flex-wrap justify-center gap-1.5 mt-1">
+              {SUPPORTED_UPLOAD_FORMAT_BADGES.map((fmt) => (
+                <span key={fmt} className="inline-flex items-center rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-accent">
+                  {fmt}
+                </span>
+              ))}
+            </div>
           </div>
           <form id="upload-form" onSubmit={handleUpload} className="hidden">
             <input
@@ -170,100 +182,61 @@ export function UploadWorkspace({
           </div>
         )}
 
-        {/* Uploading / Uploaded Files pseudo-preview */}
+        {/* Warnings from upload response */}
+        {warnings.length > 0 && (
+          <div className="rounded-xl border border-gold/30 bg-gold/5 p-4 space-y-2">
+            <h4 className="text-sm font-semibold text-foreground">{messages.uploadWarningsTitle}</h4>
+            <ul className="list-disc list-inside space-y-1">
+              {warnings.map((w, i) => (
+                <li key={i} className="text-sm text-foreground-muted">{w}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Uploading state */}
         {pending && (
            <div className="space-y-4">
-             <h4 className="text-sm font-semibold text-foreground">Uploading files...</h4>
+             <h4 className="text-sm font-semibold text-foreground">{messages.uploadUploading}</h4>
              <div className="flex flex-col gap-3">
                <div className="flex flex-col gap-2 rounded-xl bg-background-elevated border border-border p-4 relative overflow-hidden">
-                 <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="h-8 w-8 rounded-lg bg-accent/10 text-accent flex items-center justify-center">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4 animate-pulse"><path d="M14 2H6a2 2 0 0 0-2 2v16h16V8l-6-6z"/><path d="M14 2v6h6"/></svg>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-foreground truncate max-w-[200px] md:max-w-xs">Uploading document...</p>
-                        <p className="text-xs text-foreground-muted">--</p>
-                      </div>
-                    </div>
-                    {/* Fake Cancel cross */}
-                    <button type="button" className="text-foreground-muted hover:text-foreground p-1 transition-colors">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><path d="M18 6L6 18M6 6l12 12"/></svg>
-                    </button>
-                 </div>
-                 {/* Progress bar */}
-                 <div className="w-full flex items-center gap-3 mt-1.5">
-                    <div className="flex-1 h-1.5 rounded-full bg-border overflow-hidden">
-                       <div className="h-full bg-accent w-1/2 rounded-full animate-[shimmer_1.5s_infinite]"></div>
-                    </div>
-                    <span className="text-xs font-medium text-foreground-muted w-8 text-right">50%</span>
-                 </div>
-               </div>
-             </div>
-           </div>
-        )}
-
-        {!pending && latestDocument && (
-           <div className="space-y-4">
-             <h4 className="text-sm font-semibold text-foreground mt-4">Recent Uploads</h4>
-             <div className="flex flex-col gap-3">
-               <div className="flex items-center justify-between rounded-xl bg-background-elevated border border-border p-4">
-                  <div className="flex items-center gap-3">
+                 <div className="flex items-center gap-3">
                     <div className="h-8 w-8 rounded-lg bg-accent/10 text-accent flex items-center justify-center">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><path d="M14 2H6a2 2 0 0 0-2 2v16h16V8l-6-6z"/><path d="M14 2v6h6"/></svg>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4 animate-pulse"><path d="M14 2H6a2 2 0 0 0-2 2v16h16V8l-6-6z"/><path d="M14 2v6h6"/></svg>
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-foreground truncate max-w-[200px] md:max-w-xs">{latestDocument.fileName}</p>
-                      <p className="text-xs text-foreground-muted">{formatDocumentSize(latestDocument.sizeBytes)}</p>
+                      <p className="text-sm font-medium text-foreground truncate max-w-[200px] md:max-w-xs">{messages.uploadUploadingDocument}</p>
                     </div>
-                  </div>
-                  <button type="button" className="text-foreground-muted hover:text-danger p-1 transition-colors">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><path d="M18 6L6 18M6 6l12 12"/></svg>
-                  </button>
+                 </div>
+                 {/* Progress bar (indeterminate) */}
+                 <div className="w-full flex items-center gap-3 mt-1.5">
+                    <div className="flex-1 h-1.5 rounded-full bg-border overflow-hidden">
+                       <div className="h-full bg-accent rounded-full animate-[shimmer_1.5s_infinite]" style={{ width: "60%" }}></div>
+                    </div>
+                 </div>
                </div>
              </div>
            </div>
         )}
 
-        {/* OR Divider */}
-        <div className="relative py-4">
-          <div className="absolute inset-0 flex items-center" aria-hidden="true">
-            <div className="w-full border-t border-border"></div>
-          </div>
-          <div className="relative flex justify-center">
-            <span className="bg-background/50 backdrop-blur-md px-4 text-xs font-semibold text-foreground-muted uppercase tracking-wider">OR</span>
-          </div>
-        </div>
-
-        {/* Import from link */}
-        <div className="space-y-3">
-          <h4 className="text-sm font-semibold text-foreground">Import from link</h4>
-          <div className="flex items-center gap-3">
-            <div className="relative flex-1">
-              <input 
-                type="url" 
-                placeholder="Add link to upload" 
-                className="w-full h-11 px-4 bg-background-elevated border border-border text-foreground text-sm rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all placeholder:text-foreground-muted/60"
-              />
-            </div>
-            <button type="button" className="h-11 px-5 rounded-xl bg-background-strong border border-border text-foreground text-sm font-semibold hover:bg-background-elevated hover:border-border-strong transition-all focus:outline-none focus:ring-2 focus:ring-foreground/20 shrink-0">
-              Upload
-            </button>
-          </div>
-        </div>
+        {/* Latest uploaded document */}
+        {!pending && latestDocument && (
+           <div className="space-y-4">
+             <h4 className="text-sm font-semibold text-foreground mt-4">{messages.uploadRecentUploads}</h4>
+             <div className="flex flex-col gap-3">
+               <div className="flex items-center gap-3 rounded-xl bg-background-elevated border border-border p-4">
+                  <div className="h-8 w-8 rounded-lg bg-accent/10 text-accent flex items-center justify-center shrink-0">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><path d="M14 2H6a2 2 0 0 0-2 2v16h16V8l-6-6z"/><path d="M14 2v6h6"/></svg>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">{latestDocument.fileName}</p>
+                    <p className="text-xs text-foreground-muted">{formatDocumentSize(latestDocument.sizeBytes)}</p>
+                  </div>
+               </div>
+             </div>
+           </div>
+        )}
       </div>
-
-      {/* Footer Actions */}
-      <div className="px-6 py-5 bg-background-elevated/30 border-t border-border flex items-center justify-end gap-3 rounded-b-3xl">
-        <button type="button" className="h-10 px-5 rounded-xl bg-transparent text-foreground-muted text-sm font-semibold hover:text-foreground hover:bg-foreground/5 transition-all">
-          Cancel
-        </button>
-        <button type="button" className="h-10 px-6 rounded-xl bg-foreground text-background text-sm font-semibold shadow-sm hover:bg-foreground/90 transition-all focus:outline-none focus:ring-2 focus:ring-foreground/30">
-          Confirm
-        </button>
-      </div>
-
     </div>
   );
 }
-

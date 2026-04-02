@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Menu, Search, Bell, Sparkles, CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
 import type { Locale, SessionUser, ThemeMode } from "@zootopia/shared-types";
 import type { AppMessages } from "@/lib/messages";
 import { ShellNav } from "./shell-nav";
-import { usePathname } from "next/navigation";
 
 type ProtectedShellProps = {
   children: React.ReactNode;

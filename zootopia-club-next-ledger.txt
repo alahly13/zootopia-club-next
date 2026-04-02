@@ -772,4 +772,43 @@ Change Log
 
 2026-04-02 20:27:31 - Repaired broken Git metadata at repo root. Removed stale `.git` pointer file that referenced missing `C:/zootopia-club-next/.git_store_20260401_2355`, reinitialized the workspace as a normal Git repository, and reset `.git` ownership back to `zootopiavmware\\alahlyeagle13` so Git commands no longer fail with Windows ownership/safe-directory errors.
 
+- 2026-04-02 | MVP Stabilization Pass — Lint, CSS, Upload Wiring, i18n
+  - Scope: Safe wiring fixes and dead-code removal only. No new features, no assessment mode split, no infographic changes.
+  - What was done:
+    1. Fixed all 13 lint warnings (0 errors, 0 warnings after fix):
+       - Removed unused `Sparkles` from assessment/page.tsx and infographic/page.tsx
+       - Removed unused `Activity`, `Server` from home page.tsx
+       - Removed unused `useEffect`, `usePathname` from protected-shell.tsx
+       - Removed unused `assessments`, `infographics` fetches and `listAssessmentGenerationsForUser`, `listInfographicGenerationsForUser` imports from upload/page.tsx (also eliminates 2 wasted server roundtrips)
+       - Removed unused `FileText` restoration after initial over-removal (it was still used in the quick-links section)
+    2. Fixed 3 CSS issues in globals.css:
+       - Removed duplicate `.field-control:focus` rule (line 308) that overwrote the theme-aware version with hardcoded RGBA
+       - Added missing `system` theme dark-mode focus state for `.field-control` inside `@media (prefers-color-scheme: dark)`
+       - Fixed circular `--font-mono: var(--font-mono)` reference in `@theme inline` — replaced with explicit fallback stack `"JetBrains Mono", "Consolas", "Courier New", monospace`
+    3. Rewired upload-workspace.tsx:
+       - All user-facing strings now come from `messages` prop (was 100% hardcoded English)
+       - `title` and `description` props now render in the header (were accepted but ignored)
+       - `warnings` state now renders as a styled list when non-empty (was populated but never displayed)
+       - `SUPPORTED_UPLOAD_FORMAT_BADGES` now renders as format badges in dropzone (was imported but unused)
+       - Removed non-functional UI: "Import from link" section (no handler), OR divider, Cancel/Confirm footer (no handlers), fake cancel button during upload, non-functional delete button on recent uploads
+       - Progress bar changed from misleading "50%" to indeterminate animation
+    4. Added 12 new i18n keys to both en.json and ar.json:
+       - uploadDropzoneTitle, uploadDropzoneBrowse, uploadDropzoneFormats, uploadUploading, uploadUploadingDocument, uploadRecentUploads, uploadSelectFile, uploadFileNotSupported, uploadFailed, uploadWarningsTitle
+  - Changed files:
+    - `apps/web/app/(protected)/(completed)/assessment/page.tsx`
+    - `apps/web/app/(protected)/(completed)/infographic/page.tsx`
+    - `apps/web/app/(protected)/(completed)/page.tsx`
+    - `apps/web/app/(protected)/(completed)/upload/page.tsx`
+    - `apps/web/components/layout/protected-shell.tsx`
+    - `apps/web/components/upload/upload-workspace.tsx`
+    - `apps/web/app/globals.css`
+    - `apps/web/messages/en.json`
+    - `apps/web/messages/ar.json`
+  - Verification: lint 0/0, typecheck 0 errors across 5 workspaces, build clean (27 routes, standalone + postbuild normalizer)
+  - Deferred: Assessment Questions/Quiz mode split, infographic lock flag, shell-nav collapsed-mode button handlers, drag-and-drop on upload dropzone, document deletion API
+
 2026-04-02 20:38:55 - Updated root `.gitignore` to explicitly ignore `apps/web/node_modules/` using a repo-relative Git pattern so app-local installs under the Next.js workspace do not appear in Git status.
+
+2026-04-02 22:34:06 - Added a root `.gitattributes` to pin source files to LF line endings at the repository level so Windows `core.autocrlf=true` does not keep warning on Next.js and TypeScript source files during `git add`.
+
+2026-04-02 22:34:06 - Added `.git-acl-backup-*/` to root `.gitignore` so the temporary Git metadata backup folder created during Windows ACL repair does not get picked up by `git add .`.

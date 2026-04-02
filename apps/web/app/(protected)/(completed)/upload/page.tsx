@@ -4,11 +4,7 @@ import { UploadCloud, FileText, BrainCircuit, PieChart, ArrowRight, Zap } from "
 
 import { UploadWorkspace } from "@/components/upload/upload-workspace";
 import { getRequestUiContext } from "@/lib/server/request-context";
-import {
-  listAssessmentGenerationsForUser,
-  listDocumentsForUser,
-  listInfographicGenerationsForUser,
-} from "@/lib/server/repository";
+import { listDocumentsForUser } from "@/lib/server/repository";
 import { requireCompletedUser } from "@/lib/server/session";
 
 export default async function UploadPage() {
@@ -16,11 +12,7 @@ export default async function UploadPage() {
     requireCompletedUser(APP_ROUTES.upload),
     getRequestUiContext(),
   ]);
-  const [documents, assessments, infographics] = await Promise.all([
-    listDocumentsForUser(user.uid),
-    listAssessmentGenerationsForUser(user.uid),
-    listInfographicGenerationsForUser(user.uid),
-  ]);
+  const documents = await listDocumentsForUser(user.uid);
 
   return (
     <div className="space-y-12 pb-8 min-w-0">

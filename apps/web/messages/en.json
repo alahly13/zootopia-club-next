@@ -224,5 +224,15 @@
   "uploadNotesTitle": "Upload notes",
   "svgBlueprintReady": "SVG blueprint ready",
   "noDocuments": "No documents have been uploaded yet.",
-  "noUsers": "No signed-in users are available yet."
+  "noUsers": "No signed-in users are available yet.",
+  "uploadDropzoneTitle": "Drag and drop files here, or",
+  "uploadDropzoneBrowse": "browse",
+  "uploadDropzoneFormats": "Supports PDF, DOCX, XLSX, TXT, CSV, PNG, JPG, WEBP up to 50 MB",
+  "uploadUploading": "Uploading files...",
+  "uploadUploadingDocument": "Uploading document...",
+  "uploadRecentUploads": "Recent Uploads",
+  "uploadSelectFile": "Select a file before uploading.",
+  "uploadFileNotSupported": "This file is not supported.",
+  "uploadFailed": "Upload failed.",
+  "uploadWarningsTitle": "Upload notes"
 }
