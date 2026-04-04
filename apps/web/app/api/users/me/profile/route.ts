@@ -14,14 +14,6 @@ export async function PATCH(request: Request) {
     return apiError("UNAUTHENTICATED", "Sign in is required to update your profile.", 401);
   }
 
-  if (user.role === "admin") {
-    return apiError(
-      "ADMIN_PROFILE_COMPLETION_EXEMPT",
-      "Admin accounts are exempt from the mandatory profile-completion gate.",
-      403,
-    );
-  }
-
   let body: Partial<UpdateUserProfileInput>;
 
   try {
@@ -44,6 +36,8 @@ export async function PATCH(request: Request) {
     );
   }
 
+  // This endpoint is intentionally self-only for Settings.
+  // Future agents must preserve server-side ownership by keeping the writable uid bound to the verified session user.
   const updatedUser = await updateUserProfile(user.uid, {
     fullName: validation.value.fullName,
     universityCode: validation.value.universityCode,

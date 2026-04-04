@@ -70,6 +70,18 @@ backfillPublicFirebaseEnvFromAppHosting();
 const nextConfig: NextConfig = {
   output: "standalone",
   outputFileTracingRoot: workspaceRoot,
+  outputFileTracingIncludes: {
+    // Only the explicit Pro PDF lane needs the packaged Chromium payload at runtime.
+    // Keep the trace pinned to that route boundary so the Fast browser-print lane remains a
+    // lightweight HTML surface while the premium lane keeps its bundled PDF browser binary.
+    "/api/assessment/export/pdf/pro/\\[id\\]": [
+      "./node_modules/@sparticuz/chromium/bin/**/*",
+    ],
+  },
+  // Local development sometimes reaches the dev server through 127.0.0.1 even when
+  // Next booted on localhost. Keep this explicit allowlist narrow so HMR works there
+  // without broadly relaxing the dev-only origin protection.
+  allowedDevOrigins: ["127.0.0.1"],
   experimental: {
     externalDir: true,
   },

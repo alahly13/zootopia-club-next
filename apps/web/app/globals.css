@@ -630,6 +630,344 @@ html[dir="rtl"] .page-title {
     inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
+/* Assessment preview export toolbar hierarchy.
+   This stays opt-in so only the preview surface gets a dominant PDF CTA while shared history/result action rows keep their quieter default weight. */
+.assessment-export-actions--pdf-hero {
+  display: flex;
+  width: min(100%, 34rem);
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 0.7rem;
+}
+
+/* Shared preview export action chrome.
+   These pills sit over the themed preview background, so they keep a glass-like treatment that stays readable without overpowering the page. */
+.assessment-export-actions__action {
+  position: relative;
+  display: inline-flex;
+  min-height: 2.85rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  overflow: hidden;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.86), rgba(241, 245, 249, 0.7));
+  padding: 0.72rem 1.08rem;
+  color: var(--foreground);
+  font-size: 0.88rem;
+  font-weight: 700;
+  line-height: 1.1;
+  white-space: nowrap;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow:
+    0 16px 28px rgba(2, 6, 23, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.26);
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    background 180ms ease,
+    box-shadow 220ms ease,
+    color 180ms ease;
+}
+
+.assessment-export-actions__action > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* These badges make the two PDF lanes explicit without adding a second line of helper copy.
+   Preserve the visible Pro/Fast lane markers so the premium Puppeteer path and the speed-first
+   browser-print path never collapse back into one ambiguous export button. */
+.assessment-export-actions__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.45rem;
+  padding: 0.28rem 0.62rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.assessment-export-actions__badge--pro {
+  background: rgba(255, 255, 255, 0.18);
+  color: rgba(248, 250, 252, 0.96);
+}
+
+.assessment-export-actions__badge--fast {
+  border: 1px solid rgba(13, 148, 136, 0.14);
+  background: rgba(240, 253, 250, 0.92);
+  color: rgba(15, 118, 110, 0.92);
+}
+
+.assessment-export-actions__action:hover {
+  transform: translateY(-1px);
+  border-color: rgba(45, 212, 191, 0.22);
+  box-shadow:
+    0 18px 30px rgba(2, 6, 23, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.assessment-export-actions__action:focus-visible {
+  outline: none;
+  border-color: rgba(45, 212, 191, 0.34);
+  box-shadow:
+    0 0 0 4px rgba(45, 212, 191, 0.12),
+    0 18px 30px rgba(2, 6, 23, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.32);
+}
+
+.assessment-export-actions__action--secondary {
+  color: var(--foreground-muted);
+}
+
+.assessment-export-actions__action--secondary:hover,
+.assessment-export-actions__action--secondary:focus-visible {
+  color: var(--foreground);
+}
+
+.assessment-export-actions__action--fast {
+  border-color: rgba(13, 148, 136, 0.16);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(236, 252, 248, 0.78));
+  color: rgba(15, 23, 42, 0.9);
+}
+
+/* The PDF action is intentionally the hero export CTA on preview pages.
+   Keep it first, slightly larger, and visually richer so users naturally discover the premium
+   Puppeteer lane before the secondary Fast browser-print lane or the other export formats. */
+.assessment-export-actions__action--hero {
+  flex: 1 1 100%;
+  min-height: 3.35rem;
+  padding: 0.92rem 1.35rem;
+  border-color: rgba(94, 234, 212, 0.28);
+  background:
+    radial-gradient(circle at top right, rgba(167, 243, 208, 0.2), transparent 34%),
+    linear-gradient(135deg, rgba(13, 148, 136, 0.98) 0%, rgba(8, 145, 178, 0.94) 56%, rgba(15, 23, 42, 0.96) 100%);
+  color: #f8fafc;
+  font-size: 0.96rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  box-shadow:
+    0 24px 46px rgba(8, 47, 73, 0.28),
+    0 0 0 1px rgba(153, 246, 228, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.assessment-export-actions__action--hero::before {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: inherit;
+  background:
+    linear-gradient(125deg, rgba(255, 255, 255, 0.18), transparent 34%),
+    radial-gradient(circle at top right, rgba(125, 211, 252, 0.18), transparent 32%);
+  pointer-events: none;
+}
+
+.assessment-export-actions__action--hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(118deg, transparent 28%, rgba(255, 255, 255, 0.18) 49%, transparent 72%);
+  transform: translateX(-155%);
+  transition: transform 320ms ease;
+  pointer-events: none;
+}
+
+.assessment-export-actions__action--hero:hover {
+  transform: translateY(-2px);
+  border-color: rgba(153, 246, 228, 0.42);
+  box-shadow:
+    0 30px 54px rgba(8, 47, 73, 0.34),
+    0 0 28px rgba(45, 212, 191, 0.16),
+    0 0 0 1px rgba(153, 246, 228, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.24);
+}
+
+.assessment-export-actions__action--hero:hover::after,
+.assessment-export-actions__action--hero:focus-visible::after {
+  transform: translateX(155%);
+}
+
+:root[data-theme="dark"] .assessment-export-actions__action {
+  border-color: rgba(148, 163, 184, 0.16);
+  background: linear-gradient(145deg, rgba(6, 15, 24, 0.86), rgba(9, 19, 31, 0.72));
+  box-shadow:
+    0 20px 34px rgba(2, 6, 23, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+:root[data-theme="dark"] .assessment-export-actions__action:hover {
+  box-shadow:
+    0 24px 38px rgba(2, 6, 23, 0.36),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+:root[data-theme="dark"] .assessment-export-actions__action:focus-visible {
+  box-shadow:
+    0 0 0 4px rgba(45, 212, 191, 0.12),
+    0 24px 38px rgba(2, 6, 23, 0.36),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+:root[data-theme="dark"] .assessment-export-actions__action--fast {
+  border-color: rgba(94, 234, 212, 0.14);
+  background:
+    linear-gradient(145deg, rgba(7, 18, 29, 0.86), rgba(9, 28, 31, 0.72));
+  color: rgba(240, 253, 250, 0.92);
+}
+
+:root[data-theme="dark"] .assessment-export-actions__badge--fast {
+  border-color: rgba(94, 234, 212, 0.18);
+  background: rgba(8, 30, 40, 0.84);
+  color: rgba(220, 255, 249, 0.94);
+}
+
+:root[data-theme="dark"] .assessment-export-actions__action--hero {
+  border-color: rgba(94, 234, 212, 0.26);
+  background:
+    radial-gradient(circle at top right, rgba(94, 234, 212, 0.16), transparent 34%),
+    linear-gradient(135deg, rgba(13, 148, 136, 0.94) 0%, rgba(8, 145, 178, 0.88) 52%, rgba(2, 8, 23, 0.98) 100%);
+  box-shadow:
+    0 26px 48px rgba(2, 6, 23, 0.44),
+    0 0 0 1px rgba(153, 246, 228, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-theme="system"] .assessment-export-actions__action {
+    border-color: rgba(148, 163, 184, 0.16);
+    background: linear-gradient(145deg, rgba(6, 15, 24, 0.86), rgba(9, 19, 31, 0.72));
+    box-shadow:
+      0 20px 34px rgba(2, 6, 23, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+
+  :root[data-theme="system"] .assessment-export-actions__action:hover {
+    box-shadow:
+      0 24px 38px rgba(2, 6, 23, 0.36),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+
+  :root[data-theme="system"] .assessment-export-actions__action:focus-visible {
+    box-shadow:
+      0 0 0 4px rgba(45, 212, 191, 0.12),
+      0 24px 38px rgba(2, 6, 23, 0.36),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+
+  :root[data-theme="system"] .assessment-export-actions__action--fast {
+    border-color: rgba(94, 234, 212, 0.14);
+    background:
+      linear-gradient(145deg, rgba(7, 18, 29, 0.86), rgba(9, 28, 31, 0.72));
+    color: rgba(240, 253, 250, 0.92);
+  }
+
+  :root[data-theme="system"] .assessment-export-actions__badge--fast {
+    border-color: rgba(94, 234, 212, 0.18);
+    background: rgba(8, 30, 40, 0.84);
+    color: rgba(220, 255, 249, 0.94);
+  }
+
+  :root[data-theme="system"] .assessment-export-actions__action--hero {
+    border-color: rgba(94, 234, 212, 0.26);
+    background:
+      radial-gradient(circle at top right, rgba(94, 234, 212, 0.16), transparent 34%),
+      linear-gradient(135deg, rgba(13, 148, 136, 0.94) 0%, rgba(8, 145, 178, 0.88) 52%, rgba(2, 8, 23, 0.98) 100%);
+    box-shadow:
+      0 26px 48px rgba(2, 6, 23, 0.44),
+      0 0 0 1px rgba(153, 246, 228, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  }
+}
+
+@media (min-width: 640px) {
+  .assessment-export-actions__action--hero {
+    flex: 0 0 auto;
+    min-width: 14.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .assessment-export-actions__action,
+  .assessment-export-actions__action::after {
+    transition: none;
+  }
+
+  .assessment-export-actions__action:hover {
+    transform: none;
+  }
+
+  .assessment-export-actions__action--hero:hover::after,
+  .assessment-export-actions__action--hero:focus-visible::after {
+    transform: none;
+  }
+}
+
+/* Shared assessment file summary surface.
+   Keep this premium card scoped to the detached preview/result shell so the SUMMARY badge and
+   description styling stay aligned with export surfaces without leaking into unrelated pages. */
+.assessment-file-summary {
+  max-width: 43rem;
+  padding: 0.95rem 1rem 1rem;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 1.25rem;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(244, 250, 248, 0.72)),
+    radial-gradient(circle at top right, rgba(15, 118, 110, 0.08), transparent 42%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.42),
+    0 18px 34px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.assessment-file-summary--dark {
+  border-color: rgba(148, 163, 184, 0.12);
+  background:
+    linear-gradient(180deg, rgba(8, 18, 35, 0.82), rgba(4, 11, 24, 0.7)),
+    radial-gradient(circle at top right, rgba(94, 234, 212, 0.12), transparent 42%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 20px 38px rgba(2, 6, 23, 0.24);
+}
+
+.assessment-file-summary__badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 0.72rem;
+  border: 1px solid rgba(15, 118, 110, 0.14);
+  border-radius: 999px;
+  background: rgba(241, 249, 247, 0.92);
+  color: rgba(15, 118, 110, 0.94);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.assessment-file-summary--dark .assessment-file-summary__badge {
+  border-color: rgba(94, 234, 212, 0.22);
+  background: rgba(8, 30, 40, 0.84);
+  color: rgba(220, 255, 249, 0.96);
+}
+
+.assessment-file-summary__body {
+  margin: 0.72rem 0 0;
+  color: rgba(15, 23, 42, 0.8);
+  font-size: 0.95rem;
+  line-height: 1.8;
+}
+
+.assessment-file-summary--dark .assessment-file-summary__body {
+  color: rgba(232, 244, 248, 0.92);
+}
+
 .assessment-type-chip {
   display: inline-flex;
   align-items: center;

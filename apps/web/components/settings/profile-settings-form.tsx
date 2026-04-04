@@ -17,6 +17,7 @@ type ProfileSettingsFormProps = {
   initialUniversityCode: string;
   returnTo: string | null;
   profileCompleted: boolean;
+  isAdmin?: boolean;
 };
 
 export function ProfileSettingsForm({
@@ -25,6 +26,7 @@ export function ProfileSettingsForm({
   initialUniversityCode,
   returnTo,
   profileCompleted,
+  isAdmin = false,
 }: ProfileSettingsFormProps) {
   const router = useRouter();
   const [fullName, setFullName] = useState(initialFullName);
@@ -32,6 +34,20 @@ export function ProfileSettingsForm({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<UserProfileFieldErrors>({});
+  const formTitle = isAdmin
+    ? messages.settingsSelfProfileTitle
+    : profileCompleted
+      ? messages.profileCompletionEditTitle
+      : messages.profileCompletionRequiredTitle;
+  const formDescription = isAdmin
+    ? messages.settingsSelfProfileSubtitle
+    : profileCompleted
+      ? messages.profileCompletionEditSubtitle
+      : messages.profileCompletionRequiredDetail;
+  const submitLabel =
+    !isAdmin && !profileCompleted
+      ? messages.profileCompletionSaveAction
+      : messages.settingsProfileSaveAction;
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -58,6 +74,8 @@ export function ProfileSettingsForm({
         targetUrl.searchParams.set("returnTo", returnTo);
       }
 
+      /* Settings writes only through the self-profile route.
+         Keep the target account derived from the server session and never add a client-supplied uid to this payload or URL. */
       const response = await fetch(targetUrl, {
         method: "PATCH",
         headers: {
@@ -98,14 +116,10 @@ export function ProfileSettingsForm({
       <div className="flex flex-col gap-3">
         <p className="section-label">{messages.settingsProfileTitle}</p>
         <h2 className="font-[family-name:var(--font-display)] text-2xl font-bold tracking-[-0.04em] text-foreground">
-          {profileCompleted
-            ? messages.profileCompletionEditTitle
-            : messages.profileCompletionRequiredTitle}
+          {formTitle}
         </h2>
         <p className="text-sm leading-7 text-foreground-muted">
-          {profileCompleted
-            ? messages.profileCompletionEditSubtitle
-            : messages.profileCompletionRequiredDetail}
+          {formDescription}
         </p>
       </div>
 
@@ -173,7 +187,7 @@ export function ProfileSettingsForm({
           disabled={busy}
           className="action-button w-full justify-center sm:w-auto"
         >
-          {busy ? messages.loading : messages.profileCompletionSaveAction}
+          {busy ? messages.loading : submitLabel}
         </button>
       </form>
     </section>

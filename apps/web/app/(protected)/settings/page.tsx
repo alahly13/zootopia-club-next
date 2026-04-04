@@ -1,3 +1,5 @@
+import { APP_ROUTES } from "@zootopia/shared-config";
+
 import { LocaleToggle } from "@/components/preferences/locale-toggle";
 import { ProfileSettingsForm } from "@/components/settings/profile-settings-form";
 import { ThemeToggle } from "@/components/preferences/theme-toggle";
@@ -68,19 +70,22 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
               <h2 className="font-[family-name:var(--font-display)] text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
                 {uiContext.messages.profileCompletionAdminExemptTitle}
               </h2>
-              <p className="mt-3 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">      
+              <p className="mt-3 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
                 {uiContext.messages.profileCompletionAdminExemptBody}
               </p>
             </section>
-          ) : (
-            <ProfileSettingsForm
-              messages={uiContext.messages}
-              initialFullName={user.fullName ?? ""}
-              initialUniversityCode={user.universityCode ?? ""}
-              returnTo={returnTo}
-              profileCompleted={user.profileCompleted}
-            />
-          )}
+          ) : null}
+
+          {/* Settings stays on the existing self-profile form and self-only PATCH route for both roles.
+              Preserve this shared path so admins can edit only their own stored profile fields here without turning Settings into a cross-account tool. */}
+          <ProfileSettingsForm
+            messages={uiContext.messages}
+            initialFullName={user.fullName ?? ""}
+            initialUniversityCode={user.universityCode ?? ""}
+            returnTo={returnTo ?? APP_ROUTES.settings}
+            profileCompleted={user.role === "admin" || user.profileCompleted}
+            isAdmin={user.role === "admin"}
+          />
 
           <section className="relative overflow-hidden rounded-[2.5rem] border border-white/20 dark:border-white/5 bg-white/60 dark:bg-zinc-950/40 backdrop-blur-xl p-8 shadow-sm">
             <div className="flex items-center gap-3 mb-8">

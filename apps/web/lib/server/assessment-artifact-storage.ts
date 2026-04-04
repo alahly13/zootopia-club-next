@@ -65,9 +65,15 @@ export async function persistAssessmentExportArtifact(input: {
     themeMode: input.themeMode ?? null,
     fileExtension: input.fileExtension,
   });
+  /* Export artifacts are always written into the same owner namespace they will later be read
+     back from. Keep this assertion on the write path so Storage isolation stays explicit rather
+     than assuming every future path-builder change is safe by default. */
+  const assertedStoragePath = assertOwnerScopedStoragePath(storagePath, input.ownerUid, [
+    "assessment-exports",
+  ]);
 
   await getFirebaseAdminStorageBucket()
-    .file(storagePath)
+    .file(assertedStoragePath)
     .save(toBuffer(input.body), {
       resumable: false,
       metadata: {
@@ -86,7 +92,7 @@ export async function persistAssessmentExportArtifact(input: {
     themeMode: input.themeMode ?? null,
     contentType: input.contentType,
     fileName: input.fileName,
-    storagePath,
+    storagePath: assertedStoragePath,
     status: "ready",
     createdAt: input.createdAt,
     expiresAt: input.expiresAt ?? getRetentionExpiryTimestamp(input.createdAt),
@@ -104,9 +110,15 @@ export async function persistAssessmentResultArtifact(
     ownerUid: generation.ownerUid,
     generationId: generation.id,
   });
+  /* Canonical AI result artifacts must live under the same owner UID boundary as every export.
+     Preserve this write-time assertion so generated result files never drift outside the proven
+     namespace even if future refactors touch the path helper. */
+  const assertedStoragePath = assertOwnerScopedStoragePath(storagePath, generation.ownerUid, [
+    "assessment-results",
+  ]);
 
   await getFirebaseAdminStorageBucket()
-    .file(storagePath)
+    .file(assertedStoragePath)
     .save(Buffer.from(JSON.stringify(generation, null, 2)), {
       resumable: false,
       metadata: {
@@ -121,7 +133,7 @@ export async function persistAssessmentResultArtifact(
     themeMode: null,
     contentType: "application/json; charset=utf-8",
     fileName: `assessment-result-${generation.id.slice(0, 8)}.json`,
-    storagePath,
+    storagePath: assertedStoragePath,
     status: generation.status,
     createdAt: generation.createdAt,
     expiresAt: generation.expiresAt,

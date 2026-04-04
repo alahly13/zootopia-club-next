@@ -55,6 +55,8 @@ type MemoryStore = {
   adminLogs: AdminLogEntry[];
 };
 
+type OwnerScopedRecordCollection = "documents" | "assessmentGenerations";
+
 declare global {
   var __ZOOTOPIA_MEMORY_STORE__: MemoryStore | undefined;
 }
@@ -89,30 +91,141 @@ function canViewOwnerOwnedRecord(
   return viewer.role === "admin" || viewer.uid === ownerUid;
 }
 
+function normalizeStoredOwnerRole(value: unknown): UserRole | undefined {
+  return value === "admin" || value === "user" ? value : undefined;
+}
+
+/* Legacy owner-scoped records can predate ownerRole persistence. Resolve that metadata only
+   from authoritative server context so preview/result/export/upload flows can self-heal old
+   records without silently pushing admin-owned history into user scope. */
+async function resolvePersistedOwnerRole(input: {
+  ownerUid: string;
+  ownerRole?: unknown;
+  viewer?: Pick<SessionUser, "uid" | "role"> | null;
+}) {
+  const storedOwnerRole = normalizeStoredOwnerRole(input.ownerRole);
+  if (storedOwnerRole) {
+    return storedOwnerRole;
+  }
+
+  if (input.viewer && input.viewer.uid === input.ownerUid) {
+    return input.viewer.role;
+  }
+
+  const owner = await getUserByUid(input.ownerUid);
+  return owner?.role;
+}
+
+/* Firestore rejects undefined fields, but unresolved legacy ownerRole values must stay
+   intentionally unset until they can be inferred safely. Keep this write guard narrow so we
+   preserve record truth instead of defaulting ambiguous metadata into the wrong role. */
+function omitUndefinedOwnerRole<T extends { ownerRole?: UserRole }>(
+  record: T,
+): Omit<T, "ownerRole"> | T {
+  if (record.ownerRole) {
+    return record;
+  }
+
+  const nextRecord = { ...record };
+  delete nextRecord.ownerRole;
+  return nextRecord;
+}
+
+async function persistResolvedOwnerRoleBackfill(
+  collectionName: OwnerScopedRecordCollection,
+  recordId: string,
+  ownerRole: UserRole,
+) {
+  if (shouldUseFirestore()) {
+    await getFirebaseAdminFirestore()
+      .collection(collectionName)
+      .doc(recordId)
+      .set({ ownerRole }, { merge: true });
+    return;
+  }
+
+  const store = getMemoryStore();
+  if (collectionName === "documents") {
+    const existing = store.documents.get(recordId);
+    if (existing) {
+      store.documents.set(recordId, {
+        ...existing,
+        ownerRole,
+      });
+    }
+    return;
+  }
+
+  const existing = store.assessments.get(recordId);
+  if (existing) {
+    store.assessments.set(recordId, {
+      ...existing,
+      ownerRole,
+    });
+  }
+}
+
+/* Accessed legacy records should backfill their resolved ownerRole once the server can prove
+   it from the owner account. This keeps future artifact refreshes deterministic while ensuring
+   a temporary metadata repair never blocks the user-facing read path if Firestore is busy. */
+async function backfillMissingOwnerRoles<T extends { id: string; ownerRole?: UserRole }>(
+  collectionName: OwnerScopedRecordCollection,
+  records: T[],
+  resolvedOwnerRole: UserRole | undefined,
+) {
+  if (!resolvedOwnerRole) {
+    return;
+  }
+
+  const missingRecordIds = records
+    .filter((record) => !normalizeStoredOwnerRole(record.ownerRole))
+    .map((record) => record.id);
+
+  if (missingRecordIds.length === 0) {
+    return;
+  }
+
+  try {
+    await Promise.all(
+      missingRecordIds.map((recordId) =>
+        persistResolvedOwnerRoleBackfill(collectionName, recordId, resolvedOwnerRole),
+      ),
+    );
+  } catch {
+    // Legacy metadata repair is best-effort; read access should not fail because a backfill write lagged.
+  }
+}
+
 function normalizeDocumentRecord(
   record: DocumentRecord,
   fallbackActiveId: string | null,
+  resolvedOwnerRole?: UserRole,
 ): DocumentRecord {
   const isActive = record.isActive === true || record.id === fallbackActiveId;
   const expiresAt = record.expiresAt ?? getRetentionExpiryTimestamp(record.createdAt);
 
   return {
     ...record,
-    ownerRole: record.ownerRole ?? "user",
+    ownerRole: normalizeStoredOwnerRole(record.ownerRole) ?? resolvedOwnerRole,
     isActive,
     supersededAt: isActive ? null : record.supersededAt ?? null,
     expiresAt,
   };
 }
 
-function normalizeDocumentRecordList(records: DocumentRecord[]) {
+function normalizeDocumentRecordList(
+  records: DocumentRecord[],
+  resolvedOwnerRole?: UserRole,
+) {
   const fallbackActiveId =
     records.find((record) => record.isActive === true)?.id ??
     records.find((record) => !record.supersededAt)?.id ??
     records[0]?.id ??
     null;
 
-  return records.map((record) => normalizeDocumentRecord(record, fallbackActiveId));
+  return records.map((record) =>
+    normalizeDocumentRecord(record, fallbackActiveId, resolvedOwnerRole),
+  );
 }
 
 function isDocumentExpired(record: Pick<DocumentRecord, "createdAt" | "expiresAt">) {
@@ -177,7 +290,7 @@ async function persistDocumentRecord(record: DocumentRecord) {
     await getFirebaseAdminFirestore()
       .collection("documents")
       .doc(record.id)
-      .set(record, { merge: true });
+      .set(omitUndefinedOwnerRole(record), { merge: true });
   } else {
     getMemoryStore().documents.set(record.id, record);
   }
@@ -616,10 +729,90 @@ export async function listAdminActivityLogs(limit = 40) {
     .slice(0, limit);
 }
 
+async function listRawDocumentsForOwner(ownerUid: string) {
+  if (shouldUseFirestore()) {
+    const snapshot = await getFirebaseAdminFirestore()
+      .collection("documents")
+      .where("ownerUid", "==", ownerUid)
+      .get();
+
+    return snapshot.docs.map((doc) => doc.data() as DocumentRecord);
+  }
+
+  return [...getMemoryStore().documents.values()].filter(
+    (record) => record.ownerUid === ownerUid,
+  );
+}
+
+async function listRawAssessmentGenerationsForOwner(ownerUid: string) {
+  if (shouldUseFirestore()) {
+    const snapshot = await getFirebaseAdminFirestore()
+      .collection("assessmentGenerations")
+      .where("ownerUid", "==", ownerUid)
+      .get();
+
+    return snapshot.docs.map((doc) => doc.data() as AssessmentGeneration);
+  }
+
+  return [...getMemoryStore().assessments.values()].filter(
+    (record) => record.ownerUid === ownerUid,
+  );
+}
+
+/* This explicit maintenance helper lets future admin-safe migrations backfill whole owner
+   histories from authoritative role context instead of relying on repeated request-time repair.
+   Keep it role-aware and ownerUid-scoped so admin/user datasets never bleed across owners. */
+export async function backfillLegacyOwnerRolesForOwner(ownerUid: string) {
+  const resolvedOwnerRole = await resolvePersistedOwnerRole({ ownerUid });
+  if (!resolvedOwnerRole) {
+    return {
+      ownerUid,
+      ownerRole: null,
+      documentsUpdated: 0,
+      assessmentsUpdated: 0,
+    };
+  }
+
+  const [documents, assessments] = await Promise.all([
+    listRawDocumentsForOwner(ownerUid),
+    listRawAssessmentGenerationsForOwner(ownerUid),
+  ]);
+  const missingDocuments = documents.filter(
+    (record) => !normalizeStoredOwnerRole(record.ownerRole),
+  );
+  const missingAssessments = assessments.filter(
+    (record) => !normalizeStoredOwnerRole(record.ownerRole),
+  );
+
+  await Promise.all([
+    ...missingDocuments.map((record) =>
+      persistResolvedOwnerRoleBackfill("documents", record.id, resolvedOwnerRole),
+    ),
+    ...missingAssessments.map((record) =>
+      persistResolvedOwnerRoleBackfill(
+        "assessmentGenerations",
+        record.id,
+        resolvedOwnerRole,
+      ),
+    ),
+  ]);
+
+  return {
+    ownerUid,
+    ownerRole: resolvedOwnerRole,
+    documentsUpdated: missingDocuments.length,
+    assessmentsUpdated: missingAssessments.length,
+  };
+}
+
 export async function saveDocument(record: DocumentRecord) {
+  const resolvedOwnerRole = await resolvePersistedOwnerRole({
+    ownerUid: record.ownerUid,
+    ownerRole: record.ownerRole,
+  });
   const nextRecord: DocumentRecord = {
     ...record,
-    ownerRole: record.ownerRole ?? "user",
+    ownerRole: resolvedOwnerRole,
     isActive: record.isActive !== false,
     supersededAt: record.isActive === false ? record.supersededAt ?? record.updatedAt : null,
     expiresAt: record.expiresAt ?? getRetentionExpiryTimestamp(record.createdAt),
@@ -639,6 +832,8 @@ export async function saveDocument(record: DocumentRecord) {
 }
 
 export async function listDocumentsForUser(ownerUid: string, limit = 20) {
+  const resolvedOwnerRole = await resolvePersistedOwnerRole({ ownerUid });
+
   if (shouldUseFirestore()) {
     const snapshot = await getFirebaseAdminFirestore()
       .collection("documents")
@@ -647,9 +842,9 @@ export async function listDocumentsForUser(ownerUid: string, limit = 20) {
       .limit(limit)
       .get();
 
-    const documents = normalizeDocumentRecordList(
-      snapshot.docs.map((doc) => doc.data() as DocumentRecord),
-    );
+    const rawDocuments = snapshot.docs.map((doc) => doc.data() as DocumentRecord);
+    await backfillMissingOwnerRoles("documents", rawDocuments, resolvedOwnerRole);
+    const documents = normalizeDocumentRecordList(rawDocuments, resolvedOwnerRole);
     const activeDocuments: DocumentRecord[] = [];
 
     for (const document of documents) {
@@ -664,12 +859,12 @@ export async function listDocumentsForUser(ownerUid: string, limit = 20) {
     return activeDocuments;
   }
 
-  const documents = normalizeDocumentRecordList(
-    [...getMemoryStore().documents.values()]
-      .filter((record) => record.ownerUid === ownerUid)
-      .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
-      .slice(0, limit),
-  );
+  const rawDocuments = [...getMemoryStore().documents.values()]
+    .filter((record) => record.ownerUid === ownerUid)
+    .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+    .slice(0, limit);
+  await backfillMissingOwnerRoles("documents", rawDocuments, resolvedOwnerRole);
+  const documents = normalizeDocumentRecordList(rawDocuments, resolvedOwnerRole);
 
   const activeDocuments: DocumentRecord[] = [];
   for (const document of documents) {
@@ -699,8 +894,17 @@ export async function getDocumentById(id: string) {
     const fallbackDocuments = await listDocumentsForUser(document.ownerUid, 10);
     const fallbackActiveId =
       fallbackDocuments.find((record) => record.isActive)?.id ?? null;
+    const resolvedOwnerRole = await resolvePersistedOwnerRole({
+      ownerUid: document.ownerUid,
+      ownerRole: document.ownerRole,
+    });
+    await backfillMissingOwnerRoles("documents", [document], resolvedOwnerRole);
 
-    const normalizedDocument = normalizeDocumentRecord(document, fallbackActiveId);
+    const normalizedDocument = normalizeDocumentRecord(
+      document,
+      fallbackActiveId,
+      resolvedOwnerRole,
+    );
     if (isDocumentExpired(normalizedDocument)) {
       await purgeExpiredDocumentRecord(normalizedDocument);
       return null;
@@ -716,8 +920,17 @@ export async function getDocumentById(id: string) {
 
   const fallbackDocuments = await listDocumentsForUser(record.ownerUid, 10);
   const fallbackActiveId = fallbackDocuments.find((document) => document.isActive)?.id ?? null;
+  const resolvedOwnerRole = await resolvePersistedOwnerRole({
+    ownerUid: record.ownerUid,
+    ownerRole: record.ownerRole,
+  });
+  await backfillMissingOwnerRoles("documents", [record], resolvedOwnerRole);
 
-  const normalizedDocument = normalizeDocumentRecord(record, fallbackActiveId);
+  const normalizedDocument = normalizeDocumentRecord(
+    record,
+    fallbackActiveId,
+    resolvedOwnerRole,
+  );
   if (isDocumentExpired(normalizedDocument)) {
     await purgeExpiredDocumentRecord(normalizedDocument);
     return null;
@@ -812,13 +1025,19 @@ export async function deleteDocumentForOwner(documentId: string, ownerUid: strin
 }
 
 export async function saveAssessmentGeneration(record: AssessmentGeneration) {
-  const normalizedRecord = normalizeAssessmentGenerationRecord(record);
+  const resolvedOwnerRole = await resolvePersistedOwnerRole({
+    ownerUid: record.ownerUid,
+    ownerRole: record.ownerRole,
+  });
+  const normalizedRecord = normalizeAssessmentGenerationRecord(record, {
+    resolvedOwnerRole,
+  });
 
   if (shouldUseFirestore()) {
     await getFirebaseAdminFirestore()
       .collection("assessmentGenerations")
       .doc(normalizedRecord.id)
-      .set(normalizedRecord, { merge: true });
+      .set(omitUndefinedOwnerRole(normalizedRecord), { merge: true });
   } else {
     getMemoryStore().assessments.set(normalizedRecord.id, normalizedRecord);
   }
@@ -827,6 +1046,8 @@ export async function saveAssessmentGeneration(record: AssessmentGeneration) {
 }
 
 export async function listAssessmentGenerationsForUser(ownerUid: string, limit = 20) {
+  const resolvedOwnerRole = await resolvePersistedOwnerRole({ ownerUid });
+
   if (shouldUseFirestore()) {
     const snapshot = await getFirebaseAdminFirestore()
       .collection("assessmentGenerations")
@@ -835,8 +1056,16 @@ export async function listAssessmentGenerationsForUser(ownerUid: string, limit =
       .limit(limit)
       .get();
 
-    const generations = snapshot.docs.map((doc) =>
-      normalizeAssessmentGenerationRecord(doc.data() as AssessmentGeneration),
+    const rawGenerations = snapshot.docs.map((doc) => doc.data() as AssessmentGeneration);
+    await backfillMissingOwnerRoles(
+      "assessmentGenerations",
+      rawGenerations,
+      resolvedOwnerRole,
+    );
+    const generations = rawGenerations.map((record) =>
+      normalizeAssessmentGenerationRecord(record, {
+        resolvedOwnerRole,
+      }),
     );
     const activeGenerations: AssessmentGeneration[] = [];
 
@@ -852,11 +1081,20 @@ export async function listAssessmentGenerationsForUser(ownerUid: string, limit =
     return activeGenerations;
   }
 
-  const generations = [...getMemoryStore().assessments.values()]
+  const rawGenerations = [...getMemoryStore().assessments.values()]
     .filter((record) => record.ownerUid === ownerUid)
     .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
-    .slice(0, limit)
-    .map((record) => normalizeAssessmentGenerationRecord(record));
+    .slice(0, limit);
+  await backfillMissingOwnerRoles(
+    "assessmentGenerations",
+    rawGenerations,
+    resolvedOwnerRole,
+  );
+  const generations = rawGenerations.map((record) =>
+    normalizeAssessmentGenerationRecord(record, {
+      resolvedOwnerRole,
+    }),
+  );
 
   const activeGenerations: AssessmentGeneration[] = [];
   for (const generation of generations) {
@@ -878,13 +1116,40 @@ export async function getAssessmentGenerationById(id: string) {
       .doc(id)
       .get();
 
-    return snapshot.exists
-      ? normalizeAssessmentGenerationRecord(snapshot.data() as AssessmentGeneration)
-      : null;
+    if (!snapshot.exists) {
+      return null;
+    }
+
+    const record = snapshot.data() as AssessmentGeneration;
+    const resolvedOwnerRole = await resolvePersistedOwnerRole({
+      ownerUid: record.ownerUid,
+      ownerRole: record.ownerRole,
+    });
+    await backfillMissingOwnerRoles(
+      "assessmentGenerations",
+      [record],
+      resolvedOwnerRole,
+    );
+
+    return normalizeAssessmentGenerationRecord(record, {
+      resolvedOwnerRole,
+    });
   }
 
   const record = getMemoryStore().assessments.get(id);
-  return record ? normalizeAssessmentGenerationRecord(record) : null;
+  if (!record) {
+    return null;
+  }
+
+  const resolvedOwnerRole = await resolvePersistedOwnerRole({
+    ownerUid: record.ownerUid,
+    ownerRole: record.ownerRole,
+  });
+  await backfillMissingOwnerRoles("assessmentGenerations", [record], resolvedOwnerRole);
+
+  return normalizeAssessmentGenerationRecord(record, {
+    resolvedOwnerRole,
+  });
 }
 
 export async function getAssessmentGenerationForViewer(

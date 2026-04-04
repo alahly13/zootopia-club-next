@@ -380,6 +380,9 @@ function normalizeInputMode(value: unknown): AssessmentInputMode {
 }
 
 function normalizeOwnerRole(value: unknown): UserRole | undefined {
+  /* Assessment normalization must stay lossless for legacy records because ownerRole is later
+     resolved from authoritative server context. Future agents should not reintroduce a fixed
+     fallback here or older admin-owned records can be silently rewritten into user scope. */
   return value === "admin" || value === "user" ? value : undefined;
 }
 
@@ -388,6 +391,7 @@ function normalizeArtifactKind(value: unknown): AssessmentArtifactKind | undefin
     value === "export-json" ||
     value === "export-markdown" ||
     value === "export-docx" ||
+    value === "export-pdf" ||
     value === "export-print-html"
     ? value
     : undefined;
@@ -523,6 +527,9 @@ export function prepareAssessmentDocumentContext(value: string | null | undefine
 
 export function normalizeAssessmentGenerationRecord(
   record: AssessmentGenerationLike,
+  options: {
+    resolvedOwnerRole?: UserRole;
+  } = {},
 ): AssessmentGeneration {
   const inferredLanguage = inferAssessmentLanguage({
     prompt: record.request?.prompt ?? record.prompt,
@@ -623,7 +630,7 @@ export function normalizeAssessmentGenerationRecord(
   return {
     id: normalizedId,
     ownerUid: normalizeWhitespace(String(record.ownerUid || "")),
-    ownerRole: normalizeOwnerRole(record.ownerRole),
+    ownerRole: normalizeOwnerRole(record.ownerRole) ?? options.resolvedOwnerRole,
     title:
       normalizeOptionalString(record.title) ??
       buildAssessmentTitle({

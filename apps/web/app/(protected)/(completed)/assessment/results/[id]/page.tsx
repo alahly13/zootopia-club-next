@@ -2,7 +2,10 @@ import { APP_ROUTES } from "@zootopia/shared-config";
 import Link from "next/link";
 
 import { AssessmentPreviewShell } from "@/components/assessment/assessment-preview-shell";
-import { resolveAssessmentFileThemeMode } from "@/lib/assessment-file-branding";
+import {
+  DEFAULT_ASSESSMENT_FILE_THEME_MODE,
+  resolveAssessmentFileThemeMode,
+} from "@/lib/assessment-file-branding";
 import { buildAssessmentPreview } from "@/lib/server/assessment-preview";
 import { buildAssessmentFileQrDataUrl } from "@/lib/server/assessment-file-qr";
 import {
@@ -84,7 +87,9 @@ export default async function AssessmentResultPage(props: {
         })}
         initialThemeMode={resolveAssessmentFileThemeMode(
           searchParams.theme,
-          uiContext.themeMode === "light" ? "light" : "dark",
+          /* Result pages share the same detached file-surface default as preview/export routes.
+             Keep this light-first starting point isolated from the broader app theme cookie. */
+          DEFAULT_ASSESSMENT_FILE_THEME_MODE,
         )}
         qrCodeDataUrl={qrCodeDataUrl}
         view="result"

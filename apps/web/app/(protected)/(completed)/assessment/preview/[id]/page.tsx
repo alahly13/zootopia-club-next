@@ -2,7 +2,10 @@ import { APP_ROUTES } from "@zootopia/shared-config";
 import Link from "next/link";
 
 import { AssessmentPreviewShell } from "@/components/assessment/assessment-preview-shell";
-import { resolveAssessmentFileThemeMode } from "@/lib/assessment-file-branding";
+import {
+  DEFAULT_ASSESSMENT_FILE_THEME_MODE,
+  resolveAssessmentFileThemeMode,
+} from "@/lib/assessment-file-branding";
 import { buildAssessmentPreview } from "@/lib/server/assessment-preview";
 import { buildAssessmentFileQrDataUrl } from "@/lib/server/assessment-file-qr";
 import {
@@ -84,7 +87,10 @@ export default async function AssessmentPreviewPage(props: {
         })}
         initialThemeMode={resolveAssessmentFileThemeMode(
           searchParams.theme,
-          uiContext.themeMode === "light" ? "light" : "dark",
+          /* Detached assessment preview pages intentionally start in light mode even when the
+             surrounding workspace theme is dark. Preserve this file-surface default so preview
+             and export behavior stay aligned for both PDF lanes. */
+          DEFAULT_ASSESSMENT_FILE_THEME_MODE,
         )}
         qrCodeDataUrl={qrCodeDataUrl}
         view="preview"

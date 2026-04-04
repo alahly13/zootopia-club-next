@@ -22,6 +22,10 @@ export function buildAssessmentDocxExportRoute(id: string) {
   return `/api/assessment/export/docx/${encodeURIComponent(id)}`;
 }
 
-export function buildAssessmentPdfExportRoute(id: string) {
-  return `/api/assessment/export/pdf/${encodeURIComponent(id)}`;
+export function buildAssessmentProPdfExportRoute(id: string) {
+  return `/api/assessment/export/pdf/pro/${encodeURIComponent(id)}`;
+}
+
+export function buildAssessmentFastPdfExportRoute(id: string) {
+  return `/api/assessment/export/pdf/fast/${encodeURIComponent(id)}`;
 }

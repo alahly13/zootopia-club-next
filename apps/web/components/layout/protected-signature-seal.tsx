@@ -12,6 +12,9 @@ type ProtectedSignatureSealProps = {
   className?: string;
   tone?: "shell" | "light" | "dark";
   variant?: "default" | "compact";
+  textOverride?: string;
+  showBadges?: boolean;
+  showEyebrow?: boolean;
 };
 
 export function ProtectedSignatureSeal({
@@ -19,8 +22,12 @@ export function ProtectedSignatureSeal({
   className,
   tone = "shell",
   variant = "default",
+  textOverride,
+  showBadges = true,
+  showEyebrow = true,
 }: ProtectedSignatureSealProps) {
   const signature = getProtectedSignatureCopy(locale);
+  const signatureText = textOverride ?? signature.text;
 
   return (
     <section
@@ -34,20 +41,28 @@ export function ProtectedSignatureSeal({
       )}
     >
       {/* This seal is the shared protected-app attribution surface.
-          Keep the same copy and emoji markers aligned across the shell, preview/result pages, and export renderers; the shell uses the compact variant so attribution stays visible without reintroducing a heavy persistent footer bar. */}
-      <span aria-hidden="true" className="protected-signature-seal__badge">
-        {PROTECTED_SIGNATURE_LAPTOP}
-      </span>
+          Detached preview/result file surfaces may override the rendered text, badge visibility,
+          and eyebrow label visibility so export-facing signatures can remove file-only wording like
+          "Platform Seal" without rewriting the broader protected-shell attribution source. */}
+      {showBadges ? (
+        <span aria-hidden="true" className="protected-signature-seal__badge">
+          {PROTECTED_SIGNATURE_LAPTOP}
+        </span>
+      ) : null}
       <div className="protected-signature-seal__copy">
-        <span className="protected-signature-seal__eyebrow">{signature.label}</span>
-        <p className="protected-signature-seal__text">{signature.text}</p>
+        {showEyebrow ? (
+          <span className="protected-signature-seal__eyebrow">{signature.label}</span>
+        ) : null}
+        <p className="protected-signature-seal__text">{signatureText}</p>
       </div>
-      <span
-        aria-hidden="true"
-        className="protected-signature-seal__badge protected-signature-seal__badge--heart"
-      >
-        {PROTECTED_SIGNATURE_HEART}
-      </span>
+      {showBadges ? (
+        <span
+          aria-hidden="true"
+          className="protected-signature-seal__badge protected-signature-seal__badge--heart"
+        >
+          {PROTECTED_SIGNATURE_HEART}
+        </span>
+      ) : null}
     </section>
   );
 }

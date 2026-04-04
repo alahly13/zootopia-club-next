@@ -32,15 +32,19 @@ async function tryPersistBinaryToStorage(input: {
       documentId: input.documentId,
       fileName: input.fileName,
     });
+    /* Storage writes stay owner-validated at creation time too, not only on later reads/deletes.
+       Future agents should preserve this assertion so upload metadata cannot drift into another
+       owner's namespace even if a path builder is changed accidentally. */
+    const storagePath = assertOwnerScopedStoragePath(path, input.ownerUid, ["documents"]);
 
-    await bucket.file(path).save(input.buffer, {
+    await bucket.file(storagePath).save(input.buffer, {
       metadata: {
         contentType: input.mimeType,
       },
       resumable: false,
     });
 
-    return path;
+    return storagePath;
   } catch {
     return null;
   }

@@ -15,6 +15,7 @@ export interface AssessmentPreviewChoiceItem {
   marker: string | null;
   text: string;
   displayText: string;
+  isCorrect: boolean;
 }
 
 export interface AssessmentPreviewQuestionItem {
@@ -39,8 +40,38 @@ export interface AssessmentPreviewFileSurface {
   logoAssetUrl: string;
   qrTargetUrl: string;
   footerText: string;
+  footerLine: {
+    leadingEmoji: string;
+    text: string;
+    trailingEmoji: string;
+  };
   backgroundLightUrl: string;
   backgroundDarkUrl: string;
+  sealLightAssetUrl: string;
+  sealDarkAssetUrl: string;
+  supportPage: {
+    eyebrow: string;
+    title: string;
+    subtitle: string;
+    heroChips: readonly string[];
+    emotionalNote: string;
+    continuityTitle: string;
+    continuityBody: string;
+    costTitle: string;
+    costItems: readonly string[];
+    impactTitle: string;
+    impactItems: readonly string[];
+    contactTitle: string;
+    contactBody: string;
+    qrLabel: string;
+    contactPathLabel: string;
+    contactPathUrl: string;
+    directLinkLabel: string;
+    directLinkUrl: string;
+    personalContactNote: string;
+    closingLine: string;
+    signatureAssetUrl: string;
+  };
 }
 
 export interface AssessmentPreviewExportRoutes {
@@ -48,7 +79,10 @@ export interface AssessmentPreviewExportRoutes {
   json: string;
   markdown: string;
   docx: string;
-  pdf: string;
+  // Keep these lane-specific URLs explicit so preview/history UI can expose the premium
+  // downloadable PDF path separately from the lightweight browser-print path.
+  proPdf: string;
+  fastPdf: string;
 }
 
 export interface NormalizedAssessmentPreview {

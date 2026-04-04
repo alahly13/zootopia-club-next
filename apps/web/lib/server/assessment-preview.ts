@@ -6,19 +6,23 @@ import type {
   AssessmentPreviewQuestionItem,
   NormalizedAssessmentPreview,
 } from "@/lib/assessment-preview-model";
-import { buildAssessmentFileSurface } from "@/lib/assessment-file-branding";
 import {
+  ASSESSMENT_FILE_FOOTER_TEXT,
+  buildAssessmentFileSurface,
+} from "@/lib/assessment-file-branding";
+import {
+  annotateAssessmentCorrectChoices,
   deriveAssessmentQuestionDisplay,
   formatAssessmentAnswerDisplay,
 } from "@/lib/assessment-question-display";
 import {
   buildAssessmentDocxExportRoute,
+  buildAssessmentFastPdfExportRoute,
   buildAssessmentJsonExportRoute,
   buildAssessmentMarkdownExportRoute,
-  buildAssessmentPdfExportRoute,
+  buildAssessmentProPdfExportRoute,
   buildAssessmentResultApiRoute,
 } from "@/lib/assessment-routes";
-import { getProtectedSignatureCopy } from "@/lib/branding/protected-signature";
 import type { AppMessages } from "@/lib/messages";
 import { directionForLocale } from "@/lib/preferences";
 
@@ -100,6 +104,10 @@ function buildPreviewQuestionItem(input: {
   // Preview, result, Markdown, DOCX, and PDF surfaces must all consume the same interpreted
   // question hierarchy so inline provider-formatted MCQ choices never drift back into the stem.
   const display = deriveAssessmentQuestionDisplay(question.question);
+  const choices = annotateAssessmentCorrectChoices({
+    answerText: question.answer,
+    choices: display.choices,
+  });
 
   return {
     id: question.id,
@@ -108,7 +116,10 @@ function buildPreviewQuestionItem(input: {
     typeLabel: question.type ? getQuestionTypeLabel(question.type, messages) : null,
     question: question.question,
     stem: display.stem,
-    choices: display.choices,
+    /* Preview/result/PDF question cards now share one server-authored correct-choice flag.
+       Preserve this normalized field so the premium highlight stays consistent across every
+       detached file surface instead of each renderer re-parsing answer text on its own. */
+    choices,
     choiceLayout: display.choiceLayout,
     supplementalLines: display.supplementalLines,
     answer: question.answer,
@@ -174,9 +185,9 @@ function buildMarkdownExport(input: {
   generation: AssessmentGeneration;
   messages: AppMessages;
   questions: AssessmentPreviewQuestionItem[];
+  footerText: string;
 }) {
-  const { generation, messages, questions } = input;
-  const signature = getProtectedSignatureCopy(generation.meta.language);
+  const { generation, messages, questions, footerText } = input;
   const lines = [
     `# ${generation.title}`,
     "",
@@ -220,7 +231,7 @@ function buildMarkdownExport(input: {
     lines.push("");
   }
 
-  lines.push("---", "", `> ${signature.composedLine}`);
+  lines.push("---", "", `> ${footerText}`);
 
   return lines.join("\n").trim();
 }
@@ -300,6 +311,9 @@ export function buildAssessmentPreview(input: {
       generation,
       messages,
       questions,
+      /* Markdown exports should reuse the same branded footer line as DOCX/PDF/file previews
+         so extracted artifacts stay consistent even though Markdown has no visual card layout. */
+      footerText: fileSurface.footerText || ASSESSMENT_FILE_FOOTER_TEXT,
     }),
     previewRoute: generation.previewRoute,
     resultRoute: generation.resultRoute,
@@ -308,7 +322,11 @@ export function buildAssessmentPreview(input: {
       json: buildAssessmentJsonExportRoute(generation.id),
       markdown: buildAssessmentMarkdownExportRoute(generation.id),
       docx: buildAssessmentDocxExportRoute(generation.id),
-      pdf: buildAssessmentPdfExportRoute(generation.id),
+      /* Preview/result surfaces now receive explicit Pro vs Fast export routes so the premium
+         Puppeteer lane can evolve independently without the lightweight browser-print lane
+         hiding behind one overloaded route contract. */
+      proPdf: buildAssessmentProPdfExportRoute(generation.id),
+      fastPdf: buildAssessmentFastPdfExportRoute(generation.id),
     },
   };
 }

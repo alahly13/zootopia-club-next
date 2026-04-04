@@ -9,6 +9,17 @@ service firebase.storage {
       allow read, write: if false;
     }
 
+    // Generated assessment result snapshots and cached export artifacts are also server-only.
+    // They live under owner UID namespaces that are validated again in backend code before any
+    // Admin SDK read/delete, so browser clients still never touch them directly.
+    match /assessment-results/{ownerUid}/{generationId}/{fileName} {
+      allow read, write: if false;
+    }
+
+    match /assessment-exports/{ownerUid}/{generationId}/{artifactKey}/{fileName} {
+      allow read, write: if false;
+    }
+
     match /{allPaths=**} {
       allow read, write: if false;
     }

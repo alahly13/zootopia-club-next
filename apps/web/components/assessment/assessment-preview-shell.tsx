@@ -13,7 +13,6 @@ import type { AppMessages } from "@/lib/messages";
 import { AssessmentExportActions } from "@/components/assessment/assessment-export-actions";
 import { AssessmentPreviewThemeToggle } from "@/components/assessment/assessment-preview-theme-toggle";
 import { AssessmentResultViewer } from "@/components/assessment/assessment-result-viewer";
-import { ProtectedSignatureSeal } from "@/components/layout/protected-signature-seal";
 
 interface AssessmentPreviewShellProps {
   messages: AppMessages;
@@ -32,6 +31,7 @@ export function AssessmentPreviewShell({
 }: AssessmentPreviewShellProps) {
   const [themeMode, setThemeMode] = useState<AssessmentPreviewThemeMode>(initialThemeMode);
   const dark = themeMode === "dark";
+  const summaryBadgeLabel = "SUMMARY";
   const backgroundUrl =
     themeMode === "light"
       ? preview.fileSurface.backgroundLightUrl
@@ -147,9 +147,14 @@ export function AssessmentPreviewShell({
               <h1 className="max-w-4xl text-balance text-3xl font-bold tracking-tight sm:text-4xl">
                 {preview.title}
               </h1>
-              <p className={`mt-3 max-w-3xl text-sm leading-7 ${dark ? "text-white/72" : "text-slate-600"}`}>
-                {preview.summary}
-              </p>
+              {/* This is the shared file-surface summary block for both detached preview and result
+                  pages. Keep the SUMMARY badge, restrained gradients, and theme-aware copy here so
+                  the on-screen file header stays aligned with the Pro export cover without becoming
+                  a one-off tweak inside one page or inside the question/result renderer below. */}
+              <div className={`assessment-file-summary mt-4 ${dark ? "assessment-file-summary--dark" : ""}`}>
+                <span className="assessment-file-summary__badge">{summaryBadgeLabel}</span>
+                <p className="assessment-file-summary__body">{preview.summary}</p>
+              </div>
             </div>
             <div className="flex flex-wrap gap-2 text-sm font-semibold">
               <span
@@ -201,6 +206,7 @@ export function AssessmentPreviewShell({
               themeMode={themeMode}
               showPreviewLink={view === "result"}
               showResultLink={view === "preview"}
+              pdfCtaPriority={view === "preview" ? "hero" : "default"}
             />
           </div>
         </div>
@@ -244,15 +250,6 @@ export function AssessmentPreviewShell({
           preview={preview}
           themeMode={themeMode}
         />
-
-        {/* Preview and result pages repeat the same protected attribution seal inside the content surface so saved views and exported artifacts stay visually aligned. */}
-        <div className="flex justify-center pt-2">
-          <ProtectedSignatureSeal
-            locale={preview.locale}
-            tone={dark ? "dark" : "light"}
-            className={dark ? "max-w-[44rem] bg-slate-950/75" : "max-w-[44rem] bg-white/92"}
-          />
-        </div>
       </div>
     </div>
   );

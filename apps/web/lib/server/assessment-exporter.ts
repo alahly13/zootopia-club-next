@@ -1,7 +1,6 @@
 import "server-only";
 
 import type { NormalizedAssessmentPreview } from "@/lib/assessment-preview-model";
-import { getProtectedSignatureCopy } from "@/lib/branding/protected-signature";
 
 import {
   AlignmentType,
@@ -159,7 +158,6 @@ export async function buildAssessmentDocxExport(preview: NormalizedAssessmentPre
   const isRtl = preview.direction === "rtl";
   const headingAlignment = isRtl ? AlignmentType.RIGHT : AlignmentType.LEFT;
   const bodyAlignment = headingAlignment;
-  const signature = getProtectedSignatureCopy(preview.locale);
 
   const document = new Document({
     sections: [
@@ -347,26 +345,15 @@ export async function buildAssessmentDocxExport(preview: NormalizedAssessmentPre
 
             return paragraphs;
           }),
-          /* Exported assessment files carry the same branded attribution seal as the protected viewer.
-             Keep this footer aligned with the shell/result-surface seal so exported artifacts stay recognizably first-party. */
-          new Paragraph({
-            alignment: AlignmentType.CENTER,
-            spacing: {
-              before: 360,
-              after: 80,
-            },
-            children: [
-              new TextRun({
-                text: signature.label,
-                bold: true,
-                color: "0f766e",
-                size: 20,
-              }),
-            ],
-          }),
+          /* DOCX exports should carry the same file-facing attribution line as preview/PDF
+             surfaces, but they intentionally omit the old "Platform Seal" heading so the export
+             wording stays consistent across every assessment file surface. */
           new Paragraph({
             alignment: AlignmentType.CENTER,
             bidirectional: true,
+            spacing: {
+              before: 360,
+            },
             children: [
               new TextRun({
                 text: preview.fileSurface.footerText,

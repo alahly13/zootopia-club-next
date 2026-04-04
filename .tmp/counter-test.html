@@ -1,0 +1,25 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+  @page { size: A4; margin: 20mm; }
+  html, body { margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; }
+  .page-break { break-after: page; page-break-after: always; }
+  .block { height: 1000px; border: 1px solid #ccc; margin-bottom: 12px; }
+  .footer { position: fixed; left: 20mm; right: 20mm; bottom: 8mm; display:flex; justify-content: space-between; align-items:center; }
+  .seal { width: 48px; height: 48px; border: 2px solid #0f766e; border-radius:999px; display:flex; align-items:center; justify-content:center; }
+  .text { flex:1; text-align:center; direction: rtl; }
+  .badge { position: relative; width: 56px; height: 56px; display:flex; align-items:center; justify-content:center; }
+  .badge svg { position:absolute; inset:0; }
+  .badge::after { content: counter(page); position: relative; z-index:1; font-weight:700; color:#0f766e; font-size:16px; }
+</style>
+</head>
+<body>
+  <footer class="footer"><div class="seal">S</div><div class="text">footer text</div><div class="badge"><svg viewBox="0 0 56 56" aria-hidden="true"><circle cx="28" cy="28" r="22" fill="none" stroke="#0f766e" stroke-width="2" stroke-linecap="round" stroke-dasharray="104 35" transform="rotate(-45 28 28)"/></svg></div></footer>
+  <div class="block">page1 content</div>
+  <div class="page-break"></div>
+  <div class="block">page2 content</div>
+</body>
+</html>

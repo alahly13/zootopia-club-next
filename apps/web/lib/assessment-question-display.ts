@@ -10,6 +10,11 @@ export interface AssessmentQuestionChoiceDisplay {
   displayText: string;
 }
 
+export interface AssessmentQuestionChoiceDisplayState
+  extends AssessmentQuestionChoiceDisplay {
+  isCorrect: boolean;
+}
+
 export interface AssessmentQuestionDisplay {
   stem: string;
   choices: AssessmentQuestionChoiceDisplay[];
@@ -255,6 +260,50 @@ function normalizeComparableText(value: string) {
   return normalizeWhitespace(value).toLowerCase();
 }
 
+function createChoiceComparisonKey(choice: AssessmentQuestionChoiceDisplay) {
+  return `${normalizeChoiceMarker(choice.marker) ?? ""}::${normalizeComparableText(choice.text)}`;
+}
+
+function resolveAnswerChoices(input: {
+  answerText: string;
+  choices: AssessmentQuestionChoiceDisplay[];
+}) {
+  if (input.choices.length === 0) {
+    return [];
+  }
+
+  const normalizedAnswer = normalizeMultilineWhitespace(input.answerText);
+  const choicesByMarker = new Map(
+    input.choices
+      .filter((choice) => choice.marker)
+      .map((choice) => [normalizeChoiceMarker(choice.marker), choice] as const),
+  );
+  const resolvedByMarker = collectAnswerChoiceMarkers(normalizedAnswer)
+    .map((marker) => choicesByMarker.get(marker) ?? null)
+    .filter((choice): choice is AssessmentQuestionChoiceDisplay => Boolean(choice));
+
+  if (resolvedByMarker.length > 0) {
+    return resolvedByMarker;
+  }
+
+  const normalizedBareAnswer = normalizeComparableText(
+    stripAnswerPrefix(normalizedAnswer),
+  );
+  if (!normalizedBareAnswer) {
+    return [];
+  }
+
+  return input.choices.filter((choice) => {
+    const choiceText = normalizeComparableText(choice.text);
+    const choiceDisplayText = normalizeComparableText(choice.displayText);
+
+    return (
+      normalizedBareAnswer === choiceText ||
+      normalizedBareAnswer === choiceDisplayText
+    );
+  });
+}
+
 export function deriveAssessmentQuestionDisplay(
   questionText: string,
 ): AssessmentQuestionDisplay {
@@ -272,6 +321,23 @@ export function deriveAssessmentQuestionDisplay(
   );
 }
 
+export function annotateAssessmentCorrectChoices(input: {
+  answerText: string;
+  choices: AssessmentQuestionChoiceDisplay[];
+}): AssessmentQuestionChoiceDisplayState[] {
+  /* Preview/result/PDF choice highlighting must all resolve from the raw saved answer once.
+     Keep this annotation step shared so every surface marks the same correct options without
+     inventing separate heuristics or mutating the persisted assessment record. */
+  const correctChoiceKeys = new Set(
+    resolveAnswerChoices(input).map((choice) => createChoiceComparisonKey(choice)),
+  );
+
+  return input.choices.map((choice) => ({
+    ...choice,
+    isCorrect: correctChoiceKeys.has(createChoiceComparisonKey(choice)),
+  }));
+}
+
 export function formatAssessmentAnswerDisplay(input: {
   answerText: string;
   questionType?: AssessmentQuestionType | null;
@@ -285,14 +351,10 @@ export function formatAssessmentAnswerDisplay(input: {
     return normalizedAnswer;
   }
 
-  const choicesByMarker = new Map(
-    input.choices
-      .filter((choice) => choice.marker)
-      .map((choice) => [normalizeChoiceMarker(choice.marker), choice] as const),
-  );
-  const resolvedChoices = collectAnswerChoiceMarkers(normalizedAnswer)
-    .map((marker) => choicesByMarker.get(marker) ?? null)
-    .filter((choice): choice is AssessmentQuestionChoiceDisplay => Boolean(choice));
+  const resolvedChoices = resolveAnswerChoices({
+    answerText: input.answerText,
+    choices: input.choices,
+  });
 
   if (input.questionType === "multiple_response" && resolvedChoices.length > 0) {
     return resolvedChoices.map((choice) => choice.displayText).join(", ");
@@ -306,16 +368,7 @@ export function formatAssessmentAnswerDisplay(input: {
   }
 
   if (input.questionType === "mcq" || input.questionType == null) {
-    const normalizedBareAnswer = normalizeComparableText(stripAnswerPrefix(normalizedAnswer));
-    const resolvedChoiceByText = input.choices.find((choice) => {
-      const choiceText = normalizeComparableText(choice.text);
-      const choiceDisplayText = normalizeComparableText(choice.displayText);
-
-      return (
-        normalizedBareAnswer === choiceText ||
-        normalizedBareAnswer === choiceDisplayText
-      );
-    });
+    const resolvedChoiceByText = resolvedChoices[0];
 
     if (resolvedChoiceByText) {
       return resolvedChoiceByText.displayText;

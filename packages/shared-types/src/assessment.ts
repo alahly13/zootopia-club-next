@@ -102,6 +102,7 @@ export type AssessmentArtifactKind =
   | "export-json"
   | "export-markdown"
   | "export-docx"
+  | "export-pdf"
   | "export-print-html";
 
 export interface AssessmentArtifactRecord {

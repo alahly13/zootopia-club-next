@@ -1,20 +1,80 @@
-import { APP_NAME, APP_TAGLINE } from "@zootopia/shared-config";
-
-import { PROTECTED_SIGNATURE_TEXT } from "@/lib/branding/protected-signature";
+import { APP_NAME, APP_ROUTES, APP_TAGLINE } from "@zootopia/shared-config";
 
 export type AssessmentFileThemeMode = "light" | "dark";
+/* Assessment file surfaces intentionally default to light mode even when the main workspace
+   theme is dark. Keep this default scoped to preview/result/export flows so future agents do
+   not accidentally change the global app theme while adjusting detached file behavior. */
+export const DEFAULT_ASSESSMENT_FILE_THEME_MODE: AssessmentFileThemeMode = "light";
 
 export const ASSESSMENT_FILE_QR_TARGET = "https://linktr.ee/ebnabdallah";
 export const ASSESSMENT_FILE_LOGO_ASSET_URL = "/favicon.svg";
+export const ASSESSMENT_FILE_FOOTER_LINE = {
+  leadingEmoji: "💻",
+  text: "تمت برمجة وتطوير وتمويل هذه المنصة بكل شغف وإبداع على يد ابن عبدالله يوسف، دفعة 2022، قسم كيمياء حيوان",
+  trailingEmoji: "❤️",
+} as const;
+export const ASSESSMENT_FILE_FOOTER_TEXT =
+  `${ASSESSMENT_FILE_FOOTER_LINE.leadingEmoji} ${ASSESSMENT_FILE_FOOTER_LINE.text} ${ASSESSMENT_FILE_FOOTER_LINE.trailingEmoji}`;
+export const ASSESSMENT_FILE_SIGNATURE_IMAGE_ASSET_URL = "/signature.png";
+
+const ASSESSMENT_FILE_SUPPORT_PAGE = {
+  eyebrow: "رسالة أخيرة",
+  title: "ادعم استمرار زوتوبيا كلوب 🤍",
+  subtitle: "منصة تعليمية حقيقية تحاول أن تبقى نافعة اليوم، وأن تصبح أقوى للغد.",
+  heroChips: [
+    "مشروع طلابي حقيقي",
+    "تكاليف تشغيل متجددة",
+    "دعمك يصنع أثراً يبقى ✨",
+  ],
+  emotionalNote:
+    "إذا كان هذا الملف قد أفادك، فتذكّر أن بقاء المنصة وتطورها يحتاجان إلى دعم صادق يساعدها على الاستمرار والنمو.",
+  continuityTitle: "لماذا يهم هذا الدعم؟",
+  continuityBody:
+    "استمرار المنصة ليس مضموناً تلقائياً. ومن دون تغطية التكاليف التشغيلية المتجددة، قد لا نستطيع الحفاظ عليها أو تطويرها بالشكل الذي يستحقه طلاب العلوم.",
+  costTitle: "ما الذي يساعده دعمك؟",
+  costItems: [
+    "الاستضافة",
+    "المعالجة",
+    "مستحقات أدوات الذكاء الاصطناعي",
+    "مستحقات البرمجة",
+    "الأدوات المساعدة في التطوير",
+  ],
+  impactTitle: "أثر مساهمتك 🚀",
+  impactItems: [
+    "تحافظ على فائدة المنصة للطلاب الحاليين.",
+    "تمنح الأجيال القادمة منصة أنضج وأسهل في الدراسة.",
+    "تفتح الطريق لمزايا أقوى وأدوات أذكى ومسارات دراسة أسهل لطلاب العلوم.",
+  ],
+  contactTitle: "كيف تتبرع أو تتواصل؟",
+  contactBody:
+    "للتبرع أو السؤال أو معرفة المزيد عن المنصة والمزايا القادمة، يمكنك التواصل مع المطور شخصياً عبر الوسائل التالية.",
+  qrLabel: "QR للدعم والتواصل",
+  contactPathLabel: "صفحة التواصل",
+  contactPathUrl: APP_ROUTES.contact,
+  directLinkLabel: "الرابط المباشر",
+  directLinkUrl: ASSESSMENT_FILE_QR_TARGET,
+  personalContactNote:
+    "هذه الوسائل مخصصة للتبرع والاستفسارات الشخصية ومعرفة تفاصيل المنصة وما نخطط له لاحقاً.",
+  closingLine:
+    "كل مساهمة صادقة، مهما كانت بسيطة، قد تكون سبباً في بقاء هذه المنصة حيّة ومفيدة لطلاب اليوم وطلاب المستقبل.",
+  /* The final support page signature belongs to the shared file-surface contract so detached
+     preview pages and both PDF lanes can reference one asset path instead of hardcoding it per route. */
+  signatureAssetUrl: ASSESSMENT_FILE_SIGNATURE_IMAGE_ASSET_URL,
+} as const;
 
 export const ASSESSMENT_FILE_BACKGROUND_URLS = {
   light: "/light-file-background.png",
   dark: "/dark-file-background.png",
 } as const satisfies Record<AssessmentFileThemeMode, string>;
 
+export const ASSESSMENT_FILE_SEAL_ASSET_URLS = {
+  light: "/light-seal.png",
+  dark: "/dark-seal.png",
+} as const satisfies Record<AssessmentFileThemeMode, string>;
+
 export function resolveAssessmentFileThemeMode(
   value: string | null | undefined,
-  fallback: AssessmentFileThemeMode = "dark",
+  fallback: AssessmentFileThemeMode = DEFAULT_ASSESSMENT_FILE_THEME_MODE,
 ): AssessmentFileThemeMode {
   return value === "light" || value === "dark" ? value : fallback;
 }
@@ -38,14 +98,22 @@ export function buildAssessmentFileSurface(input: {
 }) {
   // This shared file-surface descriptor keeps detached preview pages and export renderers
   // aligned on one branding/background source of truth. Future agents should extend it here
-  // instead of scattering logo, QR target, or file-background paths across separate renderers.
+  // instead of scattering logo, QR target, file-background paths, or export-only footer copy
+  // across separate preview/export implementations that are supposed to stay visually aligned.
   return {
     platformName: input.platformName?.trim() || APP_NAME,
     platformTagline: input.platformTagline?.trim() || APP_TAGLINE,
     logoAssetUrl: ASSESSMENT_FILE_LOGO_ASSET_URL,
     qrTargetUrl: ASSESSMENT_FILE_QR_TARGET,
-    footerText: PROTECTED_SIGNATURE_TEXT,
+    footerText: ASSESSMENT_FILE_FOOTER_TEXT,
+    footerLine: ASSESSMENT_FILE_FOOTER_LINE,
     backgroundLightUrl: ASSESSMENT_FILE_BACKGROUND_URLS.light,
     backgroundDarkUrl: ASSESSMENT_FILE_BACKGROUND_URLS.dark,
+    sealLightAssetUrl: ASSESSMENT_FILE_SEAL_ASSET_URLS.light,
+    sealDarkAssetUrl: ASSESSMENT_FILE_SEAL_ASSET_URLS.dark,
+    // The PDF closing/support page belongs to the same file-surface identity contract as the
+    // logo, QR target, background, export footer, and repeated seal assets. Future agents should
+    // extend this shared descriptor instead of hardcoding visual-file metadata inside one renderer.
+    supportPage: ASSESSMENT_FILE_SUPPORT_PAGE,
   };
 }

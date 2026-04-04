@@ -9,6 +9,8 @@ import {
   UploadCloud,
   FileText,
   PieChart,
+  Info,
+  MessagesSquare,
   Lock,
   Settings,
   ShieldCheck,
@@ -57,6 +59,10 @@ export function ShellNav({
         return PieChart;
       case APP_ROUTES.settings:
         return Settings;
+      case APP_ROUTES.about:
+        return Info;
+      case APP_ROUTES.contact:
+        return MessagesSquare;
       case APP_ROUTES.admin:
         return ShieldCheck;
       case APP_ROUTES.adminUsers:
@@ -80,7 +86,11 @@ export function ShellNav({
           },
         ]
       : []),
+    /* About and Contact stay in the protected sidebar even though they are public routes.
+       Keep them in this shared nav so signed-in users and admins can reach platform context/support without forking a second sidebar system. */
     { href: APP_ROUTES.settings, label: messages.navSettings || "Settings" },
+    { href: APP_ROUTES.about, label: messages.navAbout || "About" },
+    { href: APP_ROUTES.contact, label: messages.navContact || "Contact" },
     ...(user.role === "admin"
       ? [
           { href: APP_ROUTES.admin, label: messages.navAdmin || "Admin Portal" },

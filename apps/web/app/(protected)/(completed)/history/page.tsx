@@ -3,6 +3,7 @@ import { Activity, FileClock, FileText } from "lucide-react";
 
 import { AssessmentExportActions } from "@/components/assessment/assessment-export-actions";
 import { HistoryDocumentActions } from "@/components/history/history-document-actions";
+import { DEFAULT_ASSESSMENT_FILE_THEME_MODE } from "@/lib/assessment-file-branding";
 import { buildAssessmentPreview } from "@/lib/server/assessment-preview";
 import { getRequestUiContext } from "@/lib/server/request-context";
 import {
@@ -46,7 +47,7 @@ export default async function HistoryPage() {
     listDocumentsForUser(user.uid, 50),
     listAssessmentGenerationsForUser(user.uid, 50),
   ]);
-  const previewThemeMode = uiContext.themeMode === "light" ? "light" : "dark";
+  const previewThemeMode = DEFAULT_ASSESSMENT_FILE_THEME_MODE;
   const previews = generations.map((generation) =>
     buildAssessmentPreview({
       generation,

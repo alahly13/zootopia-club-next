@@ -1,5 +1,5 @@
 Zootopia Club Next Master Ledger
-Last refreshed: 2026-04-04 05:04:48
+Last refreshed: 2026-04-04 20:11:09
 
 Project Identity
 - Name: Zootopia Club Next
@@ -15,7 +15,8 @@ Current Truth Snapshot
 - Root `firebase.json` now uses Firebase App Hosting as the only web deployment path and still deploys Firestore rules/indexes plus Storage rules from the repo root.
 - `apps/web/app/api/**/route.ts` is the only live backend surface today; there is no separate active root `server.ts` or root `src/*` application tree.
 - The actual architecture guide lives at `Guide-Files/Zootopia_Club_Next_16_2_2_Simplified_Monorepo_Guide_2026_WORKSPACE_UPDATED.md`; the repo-root copy referenced in some prompts and older notes is not present.
-- The App Hosting build path now depends on `apps/web/apphosting.yaml`, `apps/web/package-lock.json`, `apps/web/next.config.ts`, and `apps/web/scripts/normalize-standalone.mjs` as stable architecture files, not one-off deployment fixes.
+- The App Hosting build path now depends on `apps/web/apphosting.yaml`, `apps/web/package-lock.json`, `apps/web/next.config.ts`, and `apps/web/scripts/normalize-standalone.mjs` as stable architecture files, not one-off deployment fixes; the standalone normalizer must keep copying `@sparticuz/chromium/bin/*` into the standalone bundle so the Pro PDF lane can launch packaged Chromium on Firebase App Hosting/Cloud Run.
+- `apps/web/next.config.ts` now also explicitly allowlists `127.0.0.1` in `allowedDevOrigins` so local Next.js dev assets such as `/_next/webpack-hmr` can be requested safely when the browser reaches the dev server through `127.0.0.1` instead of only `localhost`.
 - The active Firebase App Hosting backend is `zootopia-club-next-backend` at `zootopia-club-next-backend--zootopia2026.us-central1.hosted.app`, and it is wired to Firebase web app `1:38079185268:web:adcd16b5e94d3d8c52ec21`; older Firebase web apps/backends still exist in the project but are not the current repo deployment target.
 - `apps/web/next.config.ts` now backfills the browser `NEXT_PUBLIC_FIREBASE_*` contract from App Hosting's build-only `FIREBASE_WEBAPP_CONFIG` when explicit public env vars are absent, so the existing client auth bootstrap works on App Hosting without duplicating public Firebase config in `apps/web/apphosting.yaml`.
 - The current font/runtime presentation stack uses Plus Jakarta Sans, Alexandria, Amiri, and JetBrains Mono through `apps/web/app/layout.tsx`; older IBM Plex notes remain historical change-log context only.
@@ -27,12 +28,14 @@ Current Truth Snapshot
 - Upload normalization now runs through `apps/web/lib/server/document-markdown.ts`, which creates the truthful local markdown snapshot used by the current direct-file runtime; Datalab Convert is no longer part of the active product path or runtime capability surface.
 - `/assessment` now supports server-normalized mode selection (`question_generation` or `exam_generation`) plus question-type selection and 100%-total percentage distribution inside the existing Assessment request `options` shape, and it now stores owner-scoped result metadata including `status`, `expiresAt`, `previewRoute`, `resultRoute`, and preview/export-friendly summary fields.
 - Assessment generation now prefers the original linked PDF file for Gemini models when Storage still has the binary, then falls back safely to extracted text context for unsupported file/model combinations instead of redesigning the upload pipeline.
-- Assessment results now have two dedicated pages, `/assessment/preview/[id]` and `/assessment/results/[id]`, plus owner-scoped result/export endpoints under `/api/assessment/results/[id]` and `/api/assessment/export/*/[id]`.
+- Assessment results now have two dedicated pages, `/assessment/preview/[id]` and `/assessment/results/[id]`, plus owner-scoped result/export endpoints under `/api/assessment/results/[id]`, `/api/assessment/export/pdf/pro/[id]`, `/api/assessment/export/pdf/fast/[id]`, and the existing JSON/Markdown/DOCX routes.
 - Assessment preview/result pages and the user-facing result/export APIs now resolve records through explicit owner-only repository helpers; admins no longer piggyback on the normal user artifact surfaces for cross-owner inspection.
-- Assessment preview/result pages and the print/PDF export lane now share a file-surface composition helper that keeps the first-page-only logo/brand rail, the compact `https://linktr.ee/ebnabdallah` QR card, and the light/dark file-background asset mapping explicit instead of scattering that logic across separate renderers.
+- Assessment preview/result pages plus both PDF lanes now share a narrow file-surface composition helper that keeps the first-page-only logo/brand rail, the compact `https://linktr.ee/ebnabdallah` QR card, the Arabic-only final support-page descriptor, the light/dark circular seal asset mapping, and the light/dark file-background asset mapping explicit instead of scattering that logic across separate renderers.
 - `/assessment` now uses a single-column configuration studio with Assessment-scoped custom dropdown panels, history-driven preview/result quick actions, and an optional steering prompt that can be left blank when a linked document is selected.
 - Assessment generations now persist a canonical owner-scoped result artifact in Storage, and JSON/Markdown/DOCX/print-HTML export artifacts are now cached under owner-scoped Storage paths when generated through the server routes.
-- The protected shell now places the Zootopia mark in the sidebar header, groups locale plus theme controls together in the sidebar utility rail, keeps the protected sidebar theme switcher intentionally limited to visible `Light` and `Dark` choices while still tolerating older `system` cookies safely, mounts a floating scroll-to-top control against the real protected scroll container, keeps the Arabic attribution seal in the page scroll flow instead of a persistent footer bar, and layers in a subtle timed bubble effect through the protected background only.
+- Legacy assessment and document records no longer default a missing `ownerRole` to `"user"` during normalization or persistence. Shared repository reads/writes now resolve missing owner roles from authoritative owner context only (stored role, same-owner session role when available, or the owner's user/Auth metadata), best-effort backfill resolved legacy records, and omit unresolved `ownerRole` fields from Firestore merge writes instead of silently reclassifying ambiguous admin-owned history.
+- `apps/web/lib/server/repository.ts` now also exposes `backfillLegacyOwnerRolesForOwner(ownerUid)` as the explicit owner-scoped migration helper for intentionally repairing older document/assessment histories once the server can prove the real owner role.
+- The protected shell now places the Zootopia mark in the sidebar header, groups locale plus theme controls together in the sidebar utility rail, keeps the protected sidebar theme switcher intentionally limited to visible `Light` and `Dark` choices while still tolerating older `system` cookies safely, exposes `/about` and `/contact` in the shared left sidebar for both normal users and admins, mounts a floating scroll-to-top control against the real protected scroll container, keeps the Arabic attribution seal in the page scroll flow instead of a persistent footer bar, and layers in a subtle timed bubble effect through the protected background only.
 - The protected header now also carries a compact donation CTA plus a visual-only balance placeholder chip, and that balance UI is intentionally presentation-only until a real server-authoritative credits model exists.
 - `/upload` now keeps a visible active-document continuation card with a direct Assessment CTA and a safe owner-scoped active-file removal path through `DELETE /api/uploads?documentId=...`.
 - `/api/uploads/[id]` now provides an owner-validated server download path for uploaded source files so History and other protected surfaces can retrieve the original binary without exposing Storage directly.
@@ -40,11 +43,15 @@ Current Truth Snapshot
 - Public informational routes now exist at `/about`, `/contact`, and `/donation`, and they share a dedicated public-site layout instead of borrowing the protected workspace shell or the login-page composition.
 - `/donation` now presents trust-first bilingual support messaging that explicitly covers recurring operating costs, the 2022/2023 legacy angle, continuity risk if monthly costs are not covered, and direct personal WhatsApp contact at `+201124511183`.
 - `/api/contact` now provides a small server-only public contact relay that sends through Gmail SMTP runtime env vars, keeps `CONTACT_FORM_TO` off the client, and applies a silent honeypot guard instead of broad anti-spam infrastructure.
-- Assessment preview/result pages, Markdown/DOCX exports, and the print/PDF export surface all still derive their Arabic attribution line from the shared protected signature source, while the premium QR/header/background treatment is intentionally scoped to the page-like preview/result/PDF surfaces.
-- Assessment preview/result/export surfaces now use a shared display parser that can split both multiline and inline MCQ options out of the saved `question` string, keep answer choices beneath the stem, prefer a compact 2x2 layout for four-choice sets when width allows, and resolve marker-only answers into human-readable labels like `B) Ecosystem` without rewriting the persisted assessment record.
-- Detached preview/result pages and the print/PDF export route now carry the active light/dark file theme through explicit `?theme=` query params so they can consistently reuse `apps/web/public/light-file-background.png` and `apps/web/public/dark-file-background.png`.
-- The print-first Assessment PDF lane still uses the existing same-origin HTML route, but it now renders through a more compact file-first composition with a small first-page QR pinned to the physical top-right corner only, a lighter folded-document frame treatment, fuller themed background coverage, real paged-media page-number badges sourced from the print margin box using `counter(page)`, a deeper midnight/navy dark-theme export palette that sits more cleanly over the dark file background, a first-page cover-plus-two-question layout, denser repeated cards on following pages so normal-length exports can fit about three questions per page when content size allows, emoji-capable export font fallbacks, and a print-only Arabic footer line that now carries the requested laptop/heart emoji treatment.
-- `GET /api/assessment/export/pdf/[id]` now version-tags the cached print-HTML artifact filename against the renderer layout version, so older owner-scoped export artifacts do not silently keep serving stale PDF layouts after print-surface refinements.
+- Assessment preview/result pages, Markdown/DOCX exports, and the print/PDF export surface now share their file-facing Arabic footer through `apps/web/lib/assessment-file-branding.ts`, using the exact export line `تمت برمجة وتطوير وتمويل هذه المنصة بكل شغف وإبداع على يد ابن عبدالله يوسف، دفعة 2022، قسم كيمياء حيوان 💻❤️` without rewriting the broader protected-shell attribution source.
+- Assessment preview/result/export surfaces now use a shared display parser that can split both multiline and inline MCQ options out of the saved `question` string, keep answer choices beneath the stem, prefer a compact 2x2 layout for four-choice sets when width allows, resolve marker-only answers into human-readable labels like `B) Ecosystem`, and annotate correct choices once so preview/result/PDF cards can share the same premium highlight treatment without rewriting the persisted assessment record.
+- Detached preview/result pages plus both PDF export lanes now carry the active light/dark file theme through explicit `?theme=` query params, but the assessment-specific default file mode is now `light` unless the user explicitly switches it.
+- The Pro PDF lane now launches a local Chrome/Edge executable first during integrated development and only falls back to packaged `@sparticuz/chromium` on Linux server runtimes, which preserves local developer reliability on Windows/macOS while keeping Firebase App Hosting compatible.
+- `apps/web/components/assessment/assessment-export-actions.tsx` now exposes distinct Pro and Fast PDF controls, with the Pro Puppeteer/Chromium lane rendered as the first hero CTA on preview pages and the Fast browser-print lane rendered immediately beside it as a clearly secondary path.
+- `apps/web/components/assessment/assessment-preview-shell.tsx` now owns the detached file-surface summary card used by both preview and result pages, and that shared top summary block keeps a literal `SUMMARY` badge plus theme-aware premium styling so the on-screen file header stays aligned with the Pro PDF cover treatment.
+- The Pro Assessment PDF lane now lives at `/api/assessment/export/pdf/pro/[id]`, owns the Puppeteer/Chromium download flow, keeps its own `export-pdf` artifact identity plus Pro-specific version tag, and reuses the shared file-surface HTML only as a narrow rendering foundation so future premium charts/graphs/layouts can evolve independently.
+- The Fast Assessment PDF lane now lives at `/api/assessment/export/pdf/fast/[id]`, owns the lightweight same-origin browser-print HTML flow, keeps its own `export-print-html` artifact identity plus Fast-specific version tag, and remains the speed-first fallback/quick-export path instead of hiding behind a mixed `surface=print` branch.
+- `GET /api/assessment/export/pdf/[id]` is now compatibility-only and immediately redirects older links to the explicit Pro or Fast lane route, so the real generation logic no longer lives behind one confusing mixed contract.
 - `/history` now exists as a dedicated owner-scoped protected route that aggregates retained uploads plus generated assessments/exports from the existing repository layer instead of inventing a second backend.
 - Assessment and document retention now share one 3-day lifecycle contract with lazy cleanup: expired uploads, assessment records, canonical result files, and persisted export artifacts are removed on server read/list access instead of only being hidden in UI state.
 - Regular user login and admin login are intentionally separate.
@@ -52,7 +59,7 @@ Current Truth Snapshot
 - The admin dashboard now includes a server-rendered recent platform activity feed sourced from `adminActivityLogs`, and the app now records login/session, upload, assessment, export, download, and cleanup activity there for admin-safe observability.
 - `/admin` and `/admin/users` now merge the full Firebase Auth account inventory with stored Firestore user metadata, so admin user visibility is no longer capped at 100 hydrated user documents or limited only to accounts that already completed a normal bootstrap flow.
 - Admin block/unblock now updates both the persistent `users.status` field and Firebase Auth's `disabled` flag, then revokes refresh tokens so suspension is enforced by backend/session authority even against already-issued sessions.
-- Mandatory non-admin profile completion is enforced server-side before access to the main user workspace.
+- Mandatory non-admin profile completion is enforced server-side before access to the main user workspace, but `/settings` now still uses the same self-only profile form and `PATCH /api/users/me/profile` lane for both normal users and admins.
 - Root `.env.local` is the canonical local environment source; repo-root `.env`, `cloudrun.env`, `netlify.toml`, `Dockerfile`, `cloudbuild.yaml`, `deployment/runtime-manifest.json`, and `tests/*` are not active current-repo paths.
 
 Guide Alignment Notes
@@ -440,10 +447,11 @@ Mandatory Profile Completion Architecture
   - completion-only protected pages under `apps/web/app/(protected)/(completed)`
   - protected user APIs return `PROFILE_INCOMPLETE` if the user is still gated
 - Settings save flow
-  - `PATCH /api/users/me/profile` is the only save path for the required profile fields
-  - `apps/web/components/settings/profile-settings-form.tsx` provides the client UI
+  - `PATCH /api/users/me/profile` is the only self-service save path for stored profile fields in Settings
+  - `apps/web/components/settings/profile-settings-form.tsx` provides the client UI for both normal users and admins
 - Admin policy
-  - admins are exempt from this user profile gate
+  - admins are exempt from the non-admin completion gate
+  - admins still stay inside the same self-only ownership boundary in Settings; this route does not allow cross-account editing
 
 Firebase Integration
 - Firebase project: `zootopia2026`
@@ -1291,6 +1299,169 @@ Change Log
     - `npm run typecheck --workspace @zootopia/web` exited successfully but still printed the known Windows `next typegen` `EPERM` warning against `apps/web/.next/types/routes.d.ts`
     - `npm run build --workspace @zootopia/web` passed with `/api/assessment/export/pdf/[id]`, `/assessment/preview/[id]`, and `/assessment/results/[id]` still present in the final route tree
     - manual authenticated PDF-export verification remains pending in this environment because no signed-in protected session was available, so verification here is code-level plus build-time rather than a live export walkthrough
+2026-04-04 14:23:28 - Added the provided circular seal assets to every exported Assessment PDF page without rebuilding the exporter, moving unrelated branding blocks, or changing detached preview/app-shell behavior. Root cause: the current print renderer already had a repeated `page-chrome-print` layer for every page, but it only carried the frame/fold treatment, so there was no shared theme-aware page-level slot for a repeated institutional seal and no file-surface metadata describing which seal asset to use for light versus dark export mode.
+  - What was changed:
+    - extended `apps/web/lib/assessment-preview-model.ts` and `apps/web/lib/assessment-file-branding.ts` so the shared file-surface contract now also carries `sealLightAssetUrl` and `sealDarkAssetUrl`, pointing to `apps/web/public/light-seal.png` and `apps/web/public/dark-seal.png` alongside the existing background/footer/QR metadata
+    - updated `apps/web/lib/server/assessment-print-renderer.ts` to resolve the correct seal asset from the active export theme and inject a small decorative `page-seal-print` element into the existing fixed `page-chrome-print` layer, which is the renderer-owned repeated page decoration surface that already appears on every printed page
+    - positioned that repeated seal in the physical lower-left page corner with conservative size and bottom/left offsets, plus comments explaining that future agents must preserve its collision-safe spacing relative to the footer pill, page-number badge, and dense late-page content
+  - What was preserved:
+    - `/api/assessment/export/pdf/[id]` remained the same same-origin HTML export route with the same owner-scoped cached print-HTML model and no new PDF dependency
+    - the existing first-page QR placement, page-number margin box behavior, footer identity, file-background system, support-page append-last contract, and detached preview/result surfaces all remained intact
+    - the seal stays subtle and theme-aware without changing unrelated preview-shell composition, export actions, or broader app branding logic
+  - Changed files:
+    - `apps/web/lib/assessment-preview-model.ts`
+    - `apps/web/lib/assessment-file-branding.ts`
+    - `apps/web/lib/server/assessment-print-renderer.ts`
+    - `zootopia-club-next-ledger.txt`
+  - Verification:
+    - `npm run lint --workspace @zootopia/web` passed
+    - `npm run typecheck --workspace @zootopia/web` passed
+    - `npm run build --workspace @zootopia/web` passed with `/api/assessment/export/docx/[id]`, `/api/assessment/export/markdown/[id]`, `/api/assessment/export/pdf/[id]`, `/assessment/preview/[id]`, and `/assessment/results/[id]` still present in the final route tree
+    - manual authenticated PDF-export visual verification remains pending in this environment because no signed-in protected session was available here to render a live export after the patch
+2026-04-04 14:03:58 - Added a dedicated Arabic-only donation/support closing page to the Assessment print/PDF export lane without changing the same-origin export route, question-page ordering, or unrelated preview/app-shell surfaces. Root cause: `apps/web/lib/server/assessment-print-renderer.ts` already handled the cover page and all generated question pages, but the export pipeline had no reserved end-cap composition, so files ended abruptly after the last question card and there was no shared branded contract for final-page support messaging or contact paths.
+  - What was changed:
+    - extended `apps/web/lib/assessment-preview-model.ts` and `apps/web/lib/assessment-file-branding.ts` so the shared file-surface contract now also carries an Arabic-only `supportPage` descriptor beside the existing logo, QR target, footer, and themed background metadata
+    - added the required support-page contact paths in that shared branding layer, keeping `/contact` as the in-platform inquiry path and `https://linktr.ee/ebnabdallah` as the direct donation/contact link that the final-page QR continues to point to
+    - updated `apps/web/lib/server/assessment-print-renderer.ts` to append a dedicated `support-page` section after every real question stack, force it onto its own last page, keep it theme-aware with the current light/dark export tokens and file-background system, and reuse the existing server-generated QR data URL instead of inventing a second QR path
+    - bumped `ASSESSMENT_PRINT_LAYOUT_VERSION` in `apps/web/lib/server/assessment-print-renderer.ts` to `2026-04-04-compact-pdf-v11`, preserving the existing owner-scoped cached print-HTML invalidation model so stale artifacts regenerate with the new final page
+  - What was preserved:
+    - `/api/assessment/export/pdf/[id]` remained the same print-first HTML route with the same owner-scoped caching flow and no new PDF dependency or route rewrite
+    - the existing first-page cover-plus-two-question composition, following-page compact card density, paged-media page-number badges, export footer identity, QR helper, and light/dark file background assets all remained intact
+    - JSON/Markdown/DOCX export behavior, detached preview/result surfaces, and unrelated pages or app-shell areas were not redesigned in this pass
+  - Changed files:
+    - `apps/web/lib/assessment-preview-model.ts`
+    - `apps/web/lib/assessment-file-branding.ts`
+    - `apps/web/lib/server/assessment-print-renderer.ts`
+    - `zootopia-club-next-ledger.txt`
+  - Verification:
+    - `npm run lint --workspace @zootopia/web` passed
+    - `npm run typecheck --workspace @zootopia/web` no longer reported any new type mismatch from this support-page change, but it still hit the known Windows `next typegen` `EPERM` write failure against `apps/web/.next/types/routes.d.ts`, so this environment still does not provide a fully clean standalone signal from that command
+    - `npm run build --workspace @zootopia/web` passed with `/api/assessment/export/docx/[id]`, `/api/assessment/export/markdown/[id]`, `/api/assessment/export/pdf/[id]`, `/assessment/preview/[id]`, and `/assessment/results/[id]` still present in the final route tree
+    - live authenticated PDF-export verification remains pending in this environment because no signed-in protected session was available here to render a real export after the patch
+2026-04-04 13:45:12 - Fixed the exported Assessment print/PDF page-edge bleed without changing the same-origin `/api/assessment/export/pdf/[id]` route, the cached print-HTML artifact model, or the broader export architecture. Root cause of the visible black/dead border bands: Chrome's Save-as-PDF path was not painting the `@page` margin strip from the fixed `.page-background-print` layer, so the exposed page-margin area fell back to a flat dark/blank page-box color instead of the themed file background.
+  - What was changed:
+    - updated `apps/web/lib/server/assessment-print-renderer.ts` so the print renderer now defines a theme-aware `pageBackgroundFoundation` and applies it directly to `@page`, letting the page box itself own the full-page bleed while the existing fixed artwork layer continues to render the richer inner file background
+    - updated the same renderer's print comments and layer ownership notes so future agents keep three responsibilities separate: `@page` owns the full-page edge foundation, `.page-background-print` owns the detailed themed artwork inside the sheet, and `.sheet` remains the safe content area that must not drift into the trim-sensitive outer page band
+    - bumped `ASSESSMENT_PRINT_LAYOUT_VERSION` to `2026-04-04-compact-pdf-v10`, preserving the current owner-scoped cached export regeneration flow while forcing stale print HTML artifacts to refresh with the corrected page-edge treatment
+  - What was preserved:
+    - QR placement, page numbering through the print margin box via `counter(page)`, footer/signature rendering, EN/AR, RTL, existing file-background assets, question-card styling, and the compact first-page/tighter-following-pages PDF composition all remained intact
+    - no preview/result route was rebuilt, no export route or cache key shape was redesigned beyond the existing layout-version bump, and no new dependency was added
+  - Changed files:
+    - `apps/web/lib/server/assessment-print-renderer.ts`
+    - `zootopia-club-next-ledger.txt`
+  - Verification:
+    - inspected the real current exported-print surface before and after the fix by generating actual print HTML from the renderer, printing it through headless Chrome, and sampling the rendered PDF edge pixels with PyMuPDF
+    - before the fix the first non-flat pixels appeared at roughly `x=39` and `y=45`, matching the current `@page` margins exactly; dark exports rendered flat `(18, 18, 18)` corners there instead of the themed file background
+    - after the fix the regenerated verification PDFs (`assessment-print-v10-dark.pdf` and `assessment-print-v10-light.pdf`) rendered theme-matched page corners instead of black/blank bands: dark corners measured `(10, 23, 37)` and light corners measured `(244, 239, 227)`, while the real page artwork still began at the same safe inset inside the page
+    - `npm run lint --workspace @zootopia/web` passed
+    - `npm run typecheck --workspace @zootopia/web` passed cleanly in this run
+    - `npm run build --workspace @zootopia/web` passed with `/api/assessment/export/pdf/[id]`, `/assessment/preview/[id]`, and `/assessment/results/[id]` still present in the final route tree
+2026-04-04 13:03:30 - Refined the Assessment preview export-actions hierarchy so PDF becomes the clear primary CTA without changing the existing `apps/web` runtime ownership, rebuilding the preview page, or touching the actual export routes. Root cause of the hierarchy gap: `apps/web/components/assessment/assessment-export-actions.tsx` still rendered every action with the same pill styling and shared order, leaving the PDF action last and visually indistinguishable from JSON/Markdown/DOCX/open-result links even though print/PDF is the most important export path on the preview surface.
+  - What was changed:
+    - added an opt-in `pdfCtaPriority="hero"` variant to `apps/web/components/assessment/assessment-export-actions.tsx`, keeping the shared default action row untouched while allowing the preview page to render the PDF action first as a larger premium CTA with dedicated explanatory comments future agents should preserve
+    - updated `apps/web/components/assessment/assessment-preview-shell.tsx` to opt into that hierarchy variant only when `view === "preview"`, so the detached Assessment preview page now intentionally promotes the print/PDF export action without changing the saved-result view, History, or other shared action rows
+    - added a narrowly scoped export-toolbar block to `apps/web/app/globals.css` with glass-like secondary pills, a richer teal/cyan midnight PDF hero treatment, subtle hover lift plus controlled shimmer motion, responsive first-row prominence on narrow screens, explicit dark/system focus-ring preservation, and reduced-motion guards so the CTA feels premium without becoming noisy
+  - What was preserved:
+    - `/assessment/preview/[id]`, `/assessment/results/[id]`, `/history`, and all `/api/assessment/export/*/[id]` routes kept the same ownership, routing, and export logic
+    - JSON, Markdown, DOCX, and saved-result/open-preview actions remained available and visually consistent; they were only quieted relative to the PDF hero CTA on the preview shell
+    - the broader preview/result layout, dark premium theme direction, EN/AR support, RTL flow, and current assessment/export architecture all remained intact
+  - Changed files:
+    - `apps/web/components/assessment/assessment-export-actions.tsx`
+    - `apps/web/components/assessment/assessment-preview-shell.tsx`
+    - `apps/web/app/globals.css`
+    - `zootopia-club-next-ledger.txt`
+  - Verification:
+    - `npm run lint --workspace @zootopia/web` passed
+    - `npm run typecheck --workspace @zootopia/web` exited successfully in this environment but still printed the known Windows `next typegen` `EPERM` warning against `apps/web/.next/types/routes.d.ts`, so it is not yet a fully clean standalone typecheck signal here
+    - `npm run build --workspace @zootopia/web` passed with `/assessment/preview/[id]`, `/assessment/results/[id]`, `/history`, and `/api/assessment/export/pdf/[id]` still present in the final route tree
+    - best-effort live UI inspection was performed before editing by launching the local dev server, confirming the live `/login` page on `127.0.0.1:3000`, and attempting Playwright navigation into the protected preview flow; the saved browser session in this environment could not reach the authenticated preview page, so final hierarchy verification here is code-level plus build-time rather than a signed-in live preview walkthrough
+2026-04-04 11:35:35 - Hardened legacy owner-role handling without changing the existing `apps/web` same-origin runtime, the owner-only assessment/upload route structure, or the current ownerUid-based Storage namespace design. Root cause of the data-ownership risk: the earlier PDF-export crash fix had changed missing legacy `ownerRole` values to `"user"` inside `apps/web/lib/server/assessment-records.ts`, while `apps/web/lib/server/repository.ts` still also defaulted missing `DocumentRecord.ownerRole` values to `"user"` during normalization and save. That stopped Firestore merge-write crashes, but it could silently relabel older admin-owned documents or assessment generations as user-owned metadata during export-artifact refreshes, read-through normalization, or later persistence.
+  - What was changed:
+    - updated `apps/web/lib/server/assessment-records.ts` so assessment normalization is lossless again for legacy records: missing/invalid `ownerRole` values now stay unset at the normalization boundary unless the repository passes in an already-resolved authoritative role
+    - updated `apps/web/lib/server/repository.ts` to add a shared server-only owner-role resolution helper that resolves missing legacy roles only from authoritative context: a valid stored `ownerRole`, a same-owner authenticated session role when available, or the owner's canonical Firestore/Auth-backed user role via `getUserByUid(...)`
+    - removed the unsafe `"user"` fallback from shared document save/read normalization, so both documents and assessment generations now preserve ambiguous legacy ownership instead of inventing a user role
+    - added a narrow Firestore write guard that strips only an unresolved top-level `ownerRole` field from merge writes, keeping export-artifact refreshes and other updates valid without globally enabling broad undefined-ignore behavior or guessing the wrong role
+    - added best-effort read-through backfill for accessed legacy document and assessment records once the server can actually prove the owner role, so repeated preview/result/export/upload access gradually repairs old metadata instead of leaving it permanently unresolved
+    - added the explicit owner-scoped migration helper `backfillLegacyOwnerRolesForOwner(ownerUid)` in `apps/web/lib/server/repository.ts` so future maintenance work can intentionally backfill whole owner histories once the authoritative role is known
+  - What was preserved:
+    - `/api/uploads`, `/api/uploads/[id]`, `/api/assessment/[id]`, `/api/assessment/results/[id]`, `/api/assessment/export/*/[id]`, `/assessment/preview/[id]`, and `/assessment/results/[id]` all stayed on the same routes with the same same-origin server authority
+    - owner isolation still keys access checks and Storage paths from `ownerUid`, so this pass did not mix admin/user namespaces, redesign the storage layout, or relax any auth boundary
+    - admin access, user access, existing artifact caching, QR/page-number PDF behavior, and the broader assessment/upload architecture remained intact
+  - Changed files:
+    - `apps/web/lib/server/assessment-records.ts`
+    - `apps/web/lib/server/repository.ts`
+    - `zootopia-club-next-ledger.txt`
+  - Migration/backfill strategy:
+    - runtime reads and writes now resolve missing legacy `ownerRole` values from authoritative owner context when possible and best-effort backfill those records immediately
+    - if the server still cannot prove the role, the record stays unresolved instead of being forced to `"user"`, and Firestore writes omit only that unresolved field so metadata is not corrupted
+    - `backfillLegacyOwnerRolesForOwner(ownerUid)` is now the explicit owner-scoped migration helper for intentionally repairing older histories once the real role can be proven from the owner account
+ - Verification:
+    - `npm run lint --workspace @zootopia/web` passed
+    - `npm run typecheck --workspace @zootopia/web` still printed the known Windows `next typegen` `EPERM` warning against `apps/web/.next/types/routes.d.ts`, so this environment still does not provide a fully clean standalone typecheck signal from that command
+    - `npm run build --workspace @zootopia/web` passed with `/api/uploads/[id]`, `/api/assessment/export/pdf/[id]`, `/assessment/preview/[id]`, and `/assessment/results/[id]` still present in the final route tree
+    - authenticated browser-side verification of legacy admin-owned record backfill remains pending in this environment because no signed-in protected session plus representative legacy data sample were available here
+2026-04-04 12:27:37 - Updated the file-facing Arabic footer/signature copy for Assessment extraction/export surfaces without changing the broader `apps/web` route ownership, rebuilding the exporter architecture, or rewriting unrelated shell/public attribution areas. Root cause of the inconsistency: the exported-file footer text still lived partly in the shared protected signature source and partly in print-specific string assembly, so the old Arabic line plus the later `ومن إبداع وأفكار` print-only add-on had drifted away from the new exact export copy request and could not be replaced cleanly in one place.
+  - What was changed:
+    - updated `apps/web/lib/assessment-file-branding.ts` to make the exact requested Arabic line `تمت برمجة وتطوير وتمويل هذه المنصة بكل شغف وإبداع على يد ابن عبدالله يوسف، دفعة 2022، قسم كيمياء حيوان 💻❤️` the shared export-only footer source used by file-like Assessment surfaces
+    - updated `apps/web/lib/server/assessment-preview.ts` so Markdown exports now append the same branded footer line that DOCX/PDF/file preview surfaces use, instead of composing the older shared protected signature line separately
+    - updated `apps/web/lib/server/assessment-print-renderer.ts` so print/PDF output now renders that exact shared footer line directly, removed the older print-only `ومن إبداع وأفكار` assembly, and bumped `ASSESSMENT_PRINT_LAYOUT_VERSION` to `2026-04-04-compact-pdf-v8` so cached owner-scoped print HTML artifacts regenerate with the new footer copy
+    - updated `apps/web/components/layout/protected-signature-seal.tsx` with a narrow text/badge override path and used it from `apps/web/components/assessment/assessment-preview-shell.tsx`, so detached Assessment preview/result pages can match the extracted-file footer copy without rewriting the broader protected shell attribution source
+  - What was preserved:
+    - `/api/assessment/export/pdf/[id]`, `/api/assessment/export/docx/[id]`, `/api/assessment/export/markdown/[id]`, `/assessment/preview/[id]`, and `/assessment/results/[id]` all stayed on the same same-origin `apps/web` runtime surfaces
+    - English/shared protected-shell attribution logic, public informational page signature content, export architecture, QR placement, page numbering, EN/AR support, RTL direction, Arabic typography, and emoji-capable export font handling all remained intact
+    - no new package was added, no unrelated preview layout structure was rebuilt, and the existing file-surface branding/background ownership stayed in place
+  - Changed files:
+    - `apps/web/lib/assessment-file-branding.ts`
+    - `apps/web/lib/server/assessment-preview.ts`
+    - `apps/web/lib/server/assessment-print-renderer.ts`
+    - `apps/web/components/layout/protected-signature-seal.tsx`
+    - `apps/web/components/assessment/assessment-preview-shell.tsx`
+    - `zootopia-club-next-ledger.txt`
+  - Verification:
+    - `npm run lint --workspace @zootopia/web` passed
+    - `npm run typecheck --workspace @zootopia/web` still printed the known Windows `next typegen` `EPERM` warning against `apps/web/.next/types/routes.d.ts`, so this environment still does not provide a fully clean standalone typecheck signal from that command
+    - `npm run build --workspace @zootopia/web` passed with `/api/assessment/export/docx/[id]`, `/api/assessment/export/markdown/[id]`, `/api/assessment/export/pdf/[id]`, `/assessment/preview/[id]`, and `/assessment/results/[id]` still present in the final route tree
+    - manual authenticated export/preview verification remains pending in this environment because no signed-in protected session was available here to render live detached files after the patch
+2026-04-04 05:48:17 - Refined the Assessment preview/result/PDF question-card treatment without changing the existing same-origin export route, detached preview/result route ownership, or the broader assessment export architecture. Root cause of the remaining styling gap: `apps/web/components/assessment/assessment-result-viewer.tsx` and `apps/web/lib/server/assessment-print-renderer.ts` were still rendering relatively opaque option/question surfaces with no shared correct-option state, so the themed file background could not breathe through the cards very elegantly and the right answer only appeared in the separate answer block instead of being visually integrated inside the option list itself.
+  - What was changed:
+    - extended the shared display/preview normalization path in `apps/web/lib/assessment-question-display.ts`, `apps/web/lib/assessment-preview-model.ts`, and `apps/web/lib/server/assessment-preview.ts` so parsed choice rows now carry a normalized `isCorrect` flag derived once from the saved answer text, preserving the canonical persisted record while giving preview/result/PDF renderers one shared correctness contract
+    - refined `apps/web/components/assessment/assessment-result-viewer.tsx` so the detached preview/result question section, question cards, answer cards, and rationale cards now use a more translucent glass-like treatment with backdrop blur and softer layered shadows, allowing the existing themed file background to show through more naturally without sacrificing readable contrast
+    - added a restrained correct-option highlight in the same viewer with a stronger accent border, soft emerald/teal tint, subtle glow, and a compact check badge, keeping the result clearly selected while avoiding neon or cartoonish brightness in both light and dark themes
+    - mirrored that same shared highlight state and a quieter glass-card refinement inside `apps/web/lib/server/assessment-print-renderer.ts`, including print-safe correct-option highlighting for exported PDFs and slightly more translucent question/choice/answer/rationale surfaces that stay readable over the file background
+    - bumped `ASSESSMENT_PRINT_LAYOUT_VERSION` again to `2026-04-04-compact-pdf-v7`, which preserves the current cached print-HTML regeneration architecture while forcing stale export artifacts to regenerate with the new PDF card/highlight treatment
+  - What was preserved:
+    - `/assessment/preview/[id]`, `/assessment/results/[id]`, and `/api/assessment/export/pdf/[id]` remained the same routes with the same owner-scoped server authority
+    - the existing question ordering, shared MCQ parsing model, EN/AR support, RTL behavior, branding, QR placement, page-number logic, theme-aware background ownership, and current print/export architecture all remained intact
+    - no new package was added, no unrelated pages were redesigned, and the answer block/rationale block structure stayed in place; this pass only refined the question-card material and correct-option presentation
+  - Changed files:
+    - `apps/web/lib/assessment-question-display.ts`
+    - `apps/web/lib/assessment-preview-model.ts`
+    - `apps/web/lib/server/assessment-preview.ts`
+    - `apps/web/components/assessment/assessment-result-viewer.tsx`
+    - `apps/web/lib/server/assessment-print-renderer.ts`
+    - `zootopia-club-next-ledger.txt`
+  - Verification:
+    - `npm run lint --workspace @zootopia/web` passed
+    - `npm run typecheck --workspace @zootopia/web` exited successfully but still printed the known Windows `next typegen` `EPERM` warning against `apps/web/.next/types/routes.d.ts`
+    - `npm run build --workspace @zootopia/web` passed with `/api/assessment/export/pdf/[id]`, `/assessment/preview/[id]`, and `/assessment/results/[id]` still present in the final route tree
+    - manual authenticated preview/result/PDF verification remains pending in this environment because no signed-in protected session was available, so verification here is code-level plus build-time rather than a live protected-route walkthrough
+2026-04-04 06:05:01 - Fixed the local Next.js dev-origin warning and the PDF export Firestore merge failure without changing the existing `apps/web` runtime ownership, the same-origin assessment export routes, or the broader assessment/export architecture. Root cause of the dev warning: `apps/web/next.config.ts` did not yet declare `allowedDevOrigins`, so when the dev server was booted on `localhost` and the browser later requested HMR assets through `127.0.0.1`, Next 16 blocked the cross-origin dev-only request by design. Root cause of the PDF export 500: `apps/web/lib/server/assessment-records.ts` still normalized legacy `AssessmentGeneration.ownerRole` values to `undefined` when older records lacked that field, and the print HTML export route later re-saved those records while attaching the cached export artifact, which made Firestore reject the merge write with `Cannot use "undefined" as a Firestore value (found in field "ownerRole")`.
+  - What was changed:
+    - updated `apps/web/next.config.ts` to add a narrow `allowedDevOrigins: ["127.0.0.1"]` entry with an inline comment explaining that this is only for the localhost-vs-127.0.0.1 development HMR case
+    - updated `apps/web/lib/server/assessment-records.ts` so `normalizeOwnerRole(...)` now defaults missing/invalid legacy values to `"user"` instead of returning `undefined`, with a comment explaining that Firestore merge writes for later export-artifact refreshes must never emit `ownerRole: undefined`
+  - What was preserved:
+    - the existing `/api/assessment/export/pdf/[id]` route, owner-scoped artifact caching model, and `apps/web` same-origin Route Handler architecture stayed intact
+    - no global Firestore `ignoreUndefinedProperties` relaxation was added; the fix stays narrow at the assessment normalization boundary
+    - no unrelated preview/result/export styling, QR logic, page numbering, or broader auth/session architecture was changed
+  - Changed files:
+    - `apps/web/next.config.ts`
+    - `apps/web/lib/server/assessment-records.ts`
+    - `zootopia-club-next-ledger.txt`
+  - Verification:
+    - `npm run lint --workspace @zootopia/web` passed
+    - `npm run typecheck --workspace @zootopia/web` exited successfully but still printed the known Windows `next typegen` `EPERM` warning against `apps/web/.next/types/routes.d.ts`
+    - `npm run build --workspace @zootopia/web` passed with `/api/assessment/export/pdf/[id]`, `/assessment/preview/[id]`, and `/assessment/results/[id]` still present in the final route tree
+    - live browser/dev-server verification of the `127.0.0.1` HMR warning and authenticated PDF export flow remains pending in this environment because no active local dev session or signed-in browser session was available here after the code changes, so verification is code-level plus build-time rather than a live request replay
 2026-04-04 05:04:48 - Refined the Assessment dark-mode printed-PDF mood and first-page density without changing the current same-origin export route, preview/result page ownership, or the broader export architecture. Root cause of the remaining visual gap: `apps/web/lib/server/assessment-print-renderer.ts` was still letting the print-only dark background read too lightly over white paper, which turned the exported dark file into a silver-gray haze instead of the deeper midnight/navy mood already implied by the protected preview and dark background artwork; at the same time, the first-page split introduced in the prior pass still explicitly limited page one to a single question card, so the opening sheet remained more sparse than requested.
   - What was changed:
     - retuned the print-only dark palette tokens in `apps/web/lib/server/assessment-print-renderer.ts` toward deeper navy/midnight surfaces, cleaner high-contrast text, subtler teal accents, and darker answer/rationale/footer/page-badge treatments so the exported PDF stays premium and readable instead of pale or washed out
@@ -1328,3 +1499,182 @@ Change Log
     - `npm run typecheck --workspace @zootopia/web` exited successfully but still printed the known Windows `next typegen` `EPERM` warning against `apps/web/.next/types/routes.d.ts`
     - `npm run build --workspace @zootopia/web` passed with `/api/assessment/export/pdf/[id]`, `/assessment/preview/[id]`, and `/assessment/results/[id]` still present in the final route tree
     - manual authenticated PDF-export verification remains pending in this environment because no signed-in protected session was available, so verification here is code-level plus build-time rather than a live export walkthrough
+2026-04-04 15:11:49 - Completed the protected sidebar/info-link, settings self-profile, and PDF-export feedback audit without rebuilding the exporter, changing unrelated routes, or weakening owner/session boundaries. Root cause of the remaining gaps: `apps/web/components/layout/shell-nav.tsx` still omitted `/about` and `/contact` from the protected sidebar entirely, `apps/web/app/(protected)/settings/page.tsx` plus `apps/web/app/api/users/me/profile/route.ts` stopped admin accounts at an exemption note instead of letting them reach the same self-only profile save path, and `apps/web/components/assessment/assessment-export-actions.tsx` still relied on a silent `target=\"_blank\"` print link with no user-facing route outcome.
+  - What was changed:
+    - updated `apps/web/components/layout/shell-nav.tsx` so the shared protected sidebar now exposes `About` and `Contact` for both normal users and admins through the existing nav system, with explicit comments that those entries must remain part of the authenticated sidebar even though the routes themselves live under the public site layout
+    - updated `apps/web/app/(protected)/settings/page.tsx` and `apps/web/components/settings/profile-settings-form.tsx` so Settings now keeps the same self-profile form available to both roles, preserves the admin exemption note as informational context only, keeps the form pointed at `/api/users/me/profile`, and defaults Settings saves back to `/settings` unless a safe `returnTo` is already present
+    - updated `apps/web/app/api/users/me/profile/route.ts` to remove the blanket admin `403` and preserve the verified-session self-only uid as the only writable account target, keeping validation and persistence on the server instead of widening the route into an admin-edit endpoint
+    - updated `apps/web/components/assessment/assessment-export-actions.tsx` so the shared export toolbar now preflights the existing owner-scoped print route, opens the real print tab only after a successful same-origin response, and renders inline success/failure status through the app’s existing `AuthStatus` pattern instead of leaving PDF export silent
+    - updated `apps/web/messages/en.json` and `apps/web/messages/ar.json` with the new protected-nav labels, settings copy for self-profile editing, and PDF export status messages needed by the shared UI blocks
+  - What was preserved:
+    - `/api/assessment/export/pdf/[id]` stayed the same print-first HTML export route and the broader preview/result/export architecture was not replaced
+    - `/api/users/me/profile` remained a server-authoritative self-only route keyed only from the verified session user; no client-supplied uid or admin cross-account edit path was introduced
+    - the protected shell structure, admin-vs-user route separation, non-admin profile-completion gate, EN/AR support, dark/light behavior, and current route ownership all remained intact
+  - Changed files:
+    - `apps/web/components/layout/shell-nav.tsx`
+    - `apps/web/app/(protected)/settings/page.tsx`
+    - `apps/web/components/settings/profile-settings-form.tsx`
+    - `apps/web/app/api/users/me/profile/route.ts`
+    - `apps/web/components/assessment/assessment-export-actions.tsx`
+    - `apps/web/messages/en.json`
+    - `apps/web/messages/ar.json`
+    - `zootopia-club-next-ledger.txt`
+  - Verification:
+    - `npm run lint --workspace @zootopia/web` passed
+    - `npm run typecheck --workspace @zootopia/web` passed cleanly in this run
+    - `npm run build --workspace @zootopia/web` passed with `/settings`, `/about`, `/contact`, `/assessment/preview/[id]`, and `/api/assessment/export/pdf/[id]` still present in the final route tree
+    - live local runtime verification was completed through `next start` on port `3010` plus valid session cookies minted against the configured Firebase project for real saved assessments in the named Firestore database `zootopia-club-next-database`
+    - authenticated admin preview verification confirmed the protected sidebar now shows `About` and `Contact`, the preview page still loads, clicking `Print / PDF` opens the real `/api/assessment/export/pdf/[id]` tab, and the new inline status renders `PDF export ready`
+    - direct owner-vs-non-owner export checks confirmed `GET /api/assessment/export/pdf/43ec0b0d-77aa-480f-a47a-029716f03b9c?theme=dark` returns `200 text/html` for the owning admin session and `404` for a different authenticated user session, preserving owner isolation instead of leaking another account’s export
+    - direct settings checks confirmed a completed normal user can round-trip `PATCH /api/users/me/profile?returnTo=/settings` successfully with existing stored values, and an admin session now reaches normal validation (`400`) instead of the old exemption `403`, proving the self-profile path is open to admins without widening ownership
+    - the admin Settings UI was also checked live and now renders both the existing exemption note and the new `Manage your own profile` form; no live admin profile write was executed because all current admin records in Firestore still store `null` for those fields and this pass intentionally avoided mutating production admin data just for verification
+2026-04-04 16:22:28 - Replaced the ambiguous print-only Assessment PDF action with a true downloadable PDF export while preserving the same-origin `apps/web` backend, the existing preview/result pages, the owner-scoped artifact model, and the existing browser print surface as an explicit secondary path. Root cause of the broken UX: `apps/web/components/assessment/assessment-export-actions.tsx` still treated `/api/assessment/export/pdf/[id]` as a `target=\"_blank\"` print handoff, and `apps/web/app/api/assessment/export/pdf/[id]/route.ts` only returned cached `text/html` print markup plus `window.print()` behavior instead of an actual `application/pdf` attachment response. Root cause of the storage-isolation audit concern: the current system already read and deleted artifacts through owner-scoped helpers, but write-time storage paths for uploads and assessment artifacts still relied on path builders alone instead of re-asserting owner scope at the save boundary.
+  - What was changed:
+    - added a real PDF-generation lane in `apps/web/app/api/assessment/export/pdf/[id]/route.ts`: the default route response now returns a true `application/pdf` attachment, caches that binary as a new owner-scoped `export-pdf` artifact, and keeps the old browser print HTML available only through `?surface=print`
+    - added `apps/web/lib/server/assessment-pdf-download.ts` with the new server-only PDF renderer that reuses the existing Assessment print HTML, launches local Chrome/Edge during development when available, and falls back to packaged `@sparticuz/chromium` plus `puppeteer-core` for App Hosting / standalone production deployments
+    - updated `apps/web/lib/server/assessment-print-renderer.ts` so the same print layout can now be rendered in two modes: `autoPrint: true` for the preserved human print surface and `autoPrint: false` plus an absolute `documentBaseUrl` for headless PDF capture; the renderer also now includes export-safe web-font links and keeps the existing dark/light, EN/AR, QR, seal, footer, and support-page composition intact
+    - updated `apps/web/components/assessment/assessment-export-actions.tsx` so the PDF button now fetches the same-origin route, validates that the response is a real PDF, downloads it with the server-provided file name, and shows inline preparing/success/failure feedback through the existing `AuthStatus` pattern; print is now a separate explicit action instead of the only path
+    - extended the shared preview/export contract in `apps/web/lib/assessment-preview-model.ts`, `apps/web/lib/assessment-routes.ts`, and `apps/web/lib/server/assessment-preview.ts` so client code now receives both `exportRoutes.pdf` and `exportRoutes.print`
+    - added the new `export-pdf` artifact kind in `packages/shared-types/src/assessment.ts` and `apps/web/lib/server/assessment-records.ts`, preserving the current artifact-record model instead of inventing a second export store or a parallel metadata system
+    - added write-time owner-scope assertions in `apps/web/lib/server/document-runtime.ts` and `apps/web/lib/server/assessment-artifact-storage.ts`, so uploads, canonical AI result files, and export artifacts now all re-check their final Firebase Storage path against the authoritative owner UID at the moment of save instead of trusting builder output alone
+    - refreshed `firebase/storage.rules` comments/matches so the deny-all browser Storage posture now explicitly documents the isolated upload, result, and export namespaces: `documents/{ownerUid}/{documentId}/{fileName}`, `assessment-results/{ownerUid}/{generationId}/{fileName}`, and `assessment-exports/{ownerUid}/{generationId}/{artifactKey}/{fileName}`
+    - added `@sparticuz/chromium` and `puppeteer-core` to `apps/web/package.json`, updated `package-lock.json`, and pinned `apps/web/next.config.ts` output tracing for the PDF route so standalone traces include the packaged Chromium Brotli payload needed for real server-generated PDF downloads
+    - updated `apps/web/messages/en.json` and `apps/web/messages/ar.json` so the UI copy now clearly says `Download PDF` / `تنزيل PDF`, exposes an explicit print-view action, and reports download progress or failure instead of leaving export behavior silent
+  - Storage isolation audit result:
+    - normal uploads still store under `documents/{ownerUid}/{documentId}/{fileName}` through `buildDocumentStoragePath(...)`, and reads/deletes already enforced `assertOwnerScopedStoragePath(...)`; this pass added the same assertion to the write path before `bucket.file(...).save(...)`
+    - AI-generated canonical result files still store under `assessment-results/{ownerUid}/{generationId}/result.json`, and exported artifacts still store under `assessment-exports/{ownerUid}/{generationId}/{artifactKey}/{variant.ext}`; this pass added the same owner-scope assertion before each result/export write so generated files cannot drift into another account's namespace even if a path builder changes later
+    - owner access remains backend-authoritative: upload routes use `getDocumentByIdForOwner(...)`, assessment preview/result/export routes use `getAssessmentGenerationForOwner(...)`, and artifact loads still call `assertOwnerScopedStoragePath(...)` before touching Firebase Storage, so route guessing or storage-path guessing does not bypass owner checks
+    - admin and normal-user accounts remain isolated as separate owners by UID-scoped namespaces plus owner-only backend lookups; the path format did not need a role prefix because access is already keyed from the authenticated owner account and browser-side Storage access is deny-all
+    - browser Firebase Storage access remains fully denied in `firebase/storage.rules`, so all upload/download/result/export Storage operations still flow only through same-origin backend Route Handlers and the Admin SDK
+  - What was preserved:
+    - `/api/assessment/export/pdf/[id]` stayed the same route, and the existing browser print surface was preserved instead of being removed; it is now intentionally separated behind `?surface=print`
+    - the broader `apps/web` same-origin runtime, backend auth/session authority, owner-only route model, cached artifact model, EN/AR support, RTL behavior, dark/light export styling, QR/seal/footer/support-page composition, and current preview/result pages all remained intact
+    - no unrelated auth, upload, repository, or Storage architecture was rebuilt from scratch; this pass stayed surgical inside the existing Assessment export/artifact flow
+    - the repo already contained unrelated uncommitted edits when this task began, and this pass stayed scoped to the files listed below rather than reverting or rewriting that other work
+  - Changed files:
+    - `apps/web/app/api/assessment/export/pdf/[id]/route.ts`
+    - `apps/web/components/assessment/assessment-export-actions.tsx`
+    - `apps/web/lib/assessment-preview-model.ts`
+    - `apps/web/lib/assessment-routes.ts`
+    - `apps/web/lib/server/assessment-artifact-storage.ts`
+    - `apps/web/lib/server/assessment-pdf-download.ts`
+    - `apps/web/lib/server/assessment-preview.ts`
+    - `apps/web/lib/server/assessment-print-renderer.ts`
+    - `apps/web/lib/server/assessment-records.ts`
+    - `apps/web/lib/server/document-runtime.ts`
+    - `apps/web/messages/en.json`
+    - `apps/web/messages/ar.json`
+    - `apps/web/next.config.ts`
+    - `apps/web/package.json`
+    - `firebase/storage.rules`
+    - `package-lock.json`
+    - `packages/shared-types/src/assessment.ts`
+    - `zootopia-club-next-ledger.txt`
+  - Verification:
+    - `npm run lint --workspace @zootopia/web` passed
+    - `npm run typecheck --workspace @zootopia/web` exited successfully but still printed the known Windows `next typegen` `EPERM` warning against `apps/web/.next/types/routes.d.ts`
+    - `npm run build --workspace @zootopia/web` passed with `/api/assessment/export/pdf/[id]`, `/assessment/preview/[id]`, and `/assessment/results/[id]` still present in the final route tree
+    - verified the standalone output trace after build: `apps/web/.next/server/app/api/assessment/export/pdf/[id]/route.js.nft.json` now includes the traced `@sparticuz/chromium-...` payload, the compiled server chunk imports that hashed traced package, and the traced package directory contains the required `bin/chromium.br`, `bin/fonts.tar.br`, `bin/swiftshader.tar.br`, and `bin/al2023.tar.br` assets for packaged PDF generation
+    - attempted an extra direct PDF helper smoke test through `npx tsx`, but this sandbox could not fetch an uncached `tsx` CLI because npm networking is blocked here; live authenticated end-to-end PDF-download verification therefore remains pending in this environment because no signed-in protected session was available after the code changes
+2026-04-04 17:21:21 - Refined the Assessment exported-PDF visual system without rebuilding the exporter, changing unrelated preview/result flows, or weakening the same-origin route/auth/artifact architecture. Root cause of the visual gap: in `apps/web/lib/server/assessment-print-renderer.ts` the cover summary still rendered as plain body copy beneath the title, the lower-left repeated seal remained sized for an older quieter treatment, and the footer split its Arabic signature bar from page numbering because Chrome's truthful paged-media counter naturally paints in a separate bottom band rather than inside the renderer-owned footer chrome.
+  - What was changed:
+    - upgraded the cover summary treatment in `apps/web/lib/server/assessment-print-renderer.ts` from a plain paragraph into a premium summary panel with an integrated `Summary` / `الملخص` chip, stronger contrast, and clearer hierarchy between the title and the descriptive copy while preserving the existing metadata ribbon, QR anchor, file palette, and academic tone
+    - increased the repeated lower-left seal footprint from `11.5mm` to `13.1mm` with updated inset comments and clearance values so the institutional stamp reads more clearly in both light and dark exported modes without colliding with the footer bar or question content
+    - replaced the old split footer treatment with one unified premium footer bar that keeps the Arabic signature copy and the reserved page-number slot in the same component, using one shared surface/background/border system instead of two separate stacked footer boxes
+    - added `pageNumberMode` to the print renderer so the human print surface can keep Chrome's native paged-media counter, while the real downloadable PDF suppresses that CSS counter and lets the PDF helper inject the authoritative page number into the left footer slot instead of leaving it in a detached lower strip
+    - updated `apps/web/lib/server/assessment-pdf-download.ts` and `apps/web/app/api/assessment/export/pdf/[id]/route.ts` so the download path now passes `pageNumberMode: "pdf-template"` and uses a dedicated footer-template number overlay for downloaded PDFs only; this preserves the existing renderer, artifact caching, and same-origin route while solving the page-number-in-footer requirement on the actual PDF artifact
+    - bumped `ASSESSMENT_PRINT_LAYOUT_VERSION` to `2026-04-04-compact-pdf-v12` so cached owner-scoped print/PDF artifacts regenerate against the refined summary, seal, and footer layout instead of reusing stale export surfaces
+  - What was preserved:
+    - `/api/assessment/export/pdf/[id]` remained the same route, the browser print surface remained available, and the broader `apps/web` preview/result/export architecture was not rebuilt
+    - current branding, QR/logo/header composition, support page, EN/AR behavior, RTL handling, dark/light file themes, owner-scoped export artifacts, and backend authority all remained intact
+    - no unrelated storage/auth/document ownership flows were changed in this pass; this task stayed inside the Assessment PDF renderer plus the existing PDF download helper/route seam
+  - Changed files:
+    - `apps/web/lib/server/assessment-print-renderer.ts`
+    - `apps/web/lib/server/assessment-pdf-download.ts`
+    - `apps/web/app/api/assessment/export/pdf/[id]/route.ts`
+    - `zootopia-club-next-ledger.txt`
+ - Verification:
+    - completed the mandatory upfront audit before editing: read `zootopia-club-next-ledger.txt` fully, fetched the real cached `export-print-html:en:dark` and `export-print-html:en:light` artifacts for assessment generation `43ec0b0d-77aa-480f-a47a-029716f03b9c` from the live Firestore/Storage-backed code path, rendered them to PDFs locally with Chrome, and visually inspected the real pre-change page-one/footer output before touching the renderer
+    - rerendered updated dark/light print-surface HTML locally after the code change and verified the new premium summary panel plus the larger lower seal against the real exported layout, with the manual browser-print surface now showing one unified footer bar plus Chrome's bare left page number instead of the previous two stacked footer boxes
+    - generated fresh dark/light PDFs through the actual repo helper path (`buildAssessmentPrintHtml(... pageNumberMode: "pdf-template")` + `buildAssessmentPdfBuffer(...)`) and visually verified that the downloaded PDF output now places the live page number inside the unified footer bar while keeping the Arabic footer copy, seal, background, and question-card spacing intact
+    - `npm run lint --workspace @zootopia/web` passed
+    - `npm run typecheck --workspace @zootopia/web` passed
+    - `npm run build --workspace @zootopia/web` passed with `/api/assessment/export/pdf/[id]`, `/assessment/preview/[id]`, and `/assessment/results/[id]` still present in the final route tree
+2026-04-04 18:48:04 - Split the Assessment preview/export architecture into explicit Pro and Fast PDF lanes without rebuilding the exporter, changing unrelated auth/storage flows, or weakening owner isolation. Root cause: the current implementation still hid two fundamentally different export systems inside `apps/web/app/api/assessment/export/pdf/[id]/route.ts`, where the Puppeteer/Chromium download lane and the browser-print HTML lane shared one mixed route contract, one mixed comment surface, and dark-first file-theme fallbacks inherited from the broader workspace theme.
+  - What changed:
+    - added `apps/web/lib/server/assessment-export-route-context.ts` as the narrow shared auth/owner/theme loader for export routes, keeping owner-only repository access and profile-completion checks in one place while making the assessment-specific file-theme default explicitly `light`
+    - added `apps/web/lib/server/assessment-pro-pdf-export.ts` as the premium Puppeteer/Chromium lane boundary, with its own Pro route identity, Pro-specific artifact version tag (`pro-${ASSESSMENT_PRINT_LAYOUT_VERSION}`), Pro-only admin log action, and comments reserving this seam for future richer premium rendering
+    - added `apps/web/lib/server/assessment-fast-pdf-export.ts` as the lightweight browser-print lane boundary, with its own Fast route identity, Fast-specific artifact version tag (`fast-${ASSESSMENT_PRINT_LAYOUT_VERSION}`), Fast-only admin log action, and comments preserving it as the quick HTML/print surface
+    - added dedicated same-origin route handlers at `apps/web/app/api/assessment/export/pdf/pro/[id]/route.ts` and `apps/web/app/api/assessment/export/pdf/fast/[id]/route.ts`, then converted `apps/web/app/api/assessment/export/pdf/[id]/route.ts` into a compatibility-only redirect so older links still work without keeping mixed generation logic there
+    - updated `apps/web/lib/assessment-routes.ts`, `apps/web/lib/assessment-preview-model.ts`, and `apps/web/lib/server/assessment-preview.ts` so the normalized preview contract now exposes explicit `exportRoutes.proPdf` and `exportRoutes.fastPdf` instead of one overloaded PDF route plus `surface=print`
+    - updated `apps/web/components/assessment/assessment-export-actions.tsx` and `apps/web/app/globals.css` so the preview page now shows the Pro Puppeteer/Chromium button first as the hero CTA with a visible `Pro` badge, places the Fast print/PDF button directly beside it with a visible `Fast` badge, and keeps the same inline success/failure feedback for the real download lane
+    - updated `apps/web/lib/assessment-file-branding.ts`, `apps/web/app/(protected)/(completed)/assessment/preview/[id]/page.tsx`, `apps/web/app/(protected)/(completed)/assessment/results/[id]/page.tsx`, `apps/web/app/(protected)/(completed)/history/page.tsx`, and the shared export route context so detached preview/result/export surfaces now default to the light file theme while still honoring explicit `?theme=dark` switches
+    - updated `apps/web/next.config.ts` so only `/api/assessment/export/pdf/pro/[id]` traces the packaged `@sparticuz/chromium` payload; the Fast lane remains a lightweight HTML route and no longer carries the Pro runtime requirement
+    - updated `apps/web/messages/en.json` and `apps/web/messages/ar.json` so EN/AR copy reflects the new Pro/Fast button hierarchy and the Pro-lane status messages
+  - What was preserved:
+    - `apps/web` remains the only live runtime, and all export routes still run as same-origin App Router Route Handlers with backend authority intact
+    - owner-only access still resolves through `getAssessmentGenerationForOwner(...)`, so user/admin isolation, result ownership, route-guessing protection, and Storage path isolation all stayed intact
+    - artifact storage remains owner-scoped and non-conflicting: the Pro lane still uses the `export-pdf` artifact kind, the Fast lane still uses `export-print-html`, and each lane now also carries its own lane-specific version tag in file names/log metadata
+    - the shared file-surface composition, QR/logo/support-page/footer/seal assets, MCQ parsing, EN/AR support, preview/result pages, and current backend-driven assessment/result architecture were preserved rather than redesigned
+  - Files changed in this pass:
+    - `apps/web/app/api/assessment/export/pdf/[id]/route.ts`
+    - `apps/web/app/api/assessment/export/pdf/fast/[id]/route.ts`
+    - `apps/web/app/api/assessment/export/pdf/pro/[id]/route.ts`
+    - `apps/web/app/(protected)/(completed)/assessment/preview/[id]/page.tsx`
+    - `apps/web/app/(protected)/(completed)/assessment/results/[id]/page.tsx`
+    - `apps/web/app/(protected)/(completed)/history/page.tsx`
+    - `apps/web/app/globals.css`
+    - `apps/web/components/assessment/assessment-export-actions.tsx`
+    - `apps/web/lib/assessment-file-branding.ts`
+    - `apps/web/lib/assessment-preview-model.ts`
+    - `apps/web/lib/assessment-routes.ts`
+    - `apps/web/lib/server/assessment-export-route-context.ts`
+    - `apps/web/lib/server/assessment-fast-pdf-export.ts`
+    - `apps/web/lib/server/assessment-pdf-download.ts`
+    - `apps/web/lib/server/assessment-preview.ts`
+    - `apps/web/lib/server/assessment-print-renderer.ts`
+    - `apps/web/lib/server/assessment-pro-pdf-export.ts`
+    - `apps/web/messages/en.json`
+    - `apps/web/messages/ar.json`
+    - `apps/web/next.config.ts`
+    - `zootopia-club-next-ledger.txt`
+ - Verification:
+    - read `zootopia-club-next-ledger.txt` fully before editing, then inspected the live preview/export/PDF code paths and the relevant Next.js Route Handlers/Caching docs under `node_modules/next/dist/docs/01-app/01-getting-started/15-route-handlers.md` and `08-caching.md`
+    - `npm run lint --workspace @zootopia/web` passed
+    - `npm run typecheck --workspace @zootopia/web` still printed the known Windows `next typegen` `EPERM` warning against `apps/web/.next/types/routes.d.ts`, so an additional direct `node_modules\\.bin\\tsc.cmd -p apps/web/tsconfig.json --noEmit` run was executed and passed cleanly
+    - `npm run build --workspace @zootopia/web` passed with `/api/assessment/export/pdf/[id]`, `/api/assessment/export/pdf/fast/[id]`, `/api/assessment/export/pdf/pro/[id]`, `/assessment/preview/[id]`, and `/assessment/results/[id]` all present in the final route tree
+    - verified the built trace split after build: `apps/web/.next/server/app/api/assessment/export/pdf/pro/[id]/route.js.nft.json` includes `@sparticuz/chromium`, while the Fast lane trace does not, confirming the premium browser payload is now isolated to the Pro route boundary
+    - live signed-in browser verification remains pending in this environment, so final verification here is code-level plus lint/typecheck/build/trace validation rather than an authenticated click-through
+2026-04-04 20:11:09 - Fixed the visible Pro PDF export failure without collapsing the Pro/Fast split, weakening owner isolation, or redesigning the existing `apps/web` export architecture. Root cause of the failing Pro lane: `apps/web/lib/server/assessment-pdf-download.ts` still waited for `networkidle0` after injecting the shared file-surface HTML, and that brittle wait could time out on the dark-theme asset/font path even though the PDF surface was visually ready; both dedicated route handlers also returned async export builders without `await`, so helper rejections could escape the local `try/catch` boundary and surface as less truthful generic failures; `apps/web/package-lock.json` had drifted out of sync with `apps/web/package.json`, which made the App Hosting install contract untrustworthy; and the standalone postbuild normalizer was not yet copying `@sparticuz/chromium/bin/*` into the standalone package root where the hosted Pro runtime actually expects those Brotli payloads.
+  - What was changed:
+    - updated `apps/web/lib/server/assessment-pdf-download.ts` so the Pro lane now clearly separates local development from hosted Linux runtime behavior: it prefers an explicit local Chrome/Edge executable on developer machines, throws a clear setup error on non-Linux machines with no browser instead of attempting the unsupported packaged fallback, keeps packaged `@sparticuz/chromium` only for Linux/App Hosting-style runtimes, validates that the packaged executable really materializes, and replaces the brittle `networkidle0` wait with a deterministic `load` + font/image settle path designed to preserve exact light/dark file-theme capture without dark-mode timeouts
+    - updated `apps/web/app/api/assessment/export/pdf/pro/[id]/route.ts` and `apps/web/app/api/assessment/export/pdf/fast/[id]/route.ts` to `await` their async export builders inside the route-local `try/catch`, preserving the existing route split while making success/failure feedback more truthful
+    - updated `apps/web/components/assessment/assessment-preview-shell.tsx` and `apps/web/app/globals.css` so the shared detached preview/result file surface now renders a premium top summary card with a literal `SUMMARY` badge, restrained glass-like styling, and light/dark-safe contrast instead of plain body copy under the title
+    - updated `apps/web/lib/server/assessment-print-renderer.ts` so the Pro PDF cover uses the same literal `SUMMARY` chip label as the shared preview/result shell, keeping the on-screen file header and the downloadable Pro artifact visually aligned
+    - updated `apps/web/scripts/normalize-standalone.mjs` so the standalone bundle now copies `@sparticuz/chromium/bin/*` into `apps/web/.next/standalone/node_modules/@sparticuz/chromium/bin`, which is the package-relative location the hosted Pro lane needs at runtime
+    - regenerated `apps/web/package-lock.json` from the real current `apps/web/package.json`, restoring the app-local lockfile/App Hosting install boundary and bringing `@sparticuz/chromium`, `puppeteer-core`, and the newer app dependencies into sync
+  - What was preserved:
+    - `apps/web` remains the only live runtime, Firebase App Hosting remains the active deployment path, and all assessment export routes remain same-origin App Router Route Handlers with backend authority intact
+    - the Pro lane still owns the real Puppeteer/Chromium downloadable PDF path at `/api/assessment/export/pdf/pro/[id]`, while the Fast lane still owns the lightweight browser-print HTML path at `/api/assessment/export/pdf/fast/[id]`; route boundaries, artifact identities, lane-specific responsibilities, and the compatibility redirect from `/api/assessment/export/pdf/[id]` were preserved
+    - exact theme inheritance remained query-driven and backend-authoritative: detached preview/result surfaces still default to the assessment-specific light file theme unless explicitly switched, the export buttons still append the live preview `?theme=` state, and the server route context still resolves that explicit file theme instead of borrowing the broader workspace theme
+    - owner-only access, session checks, profile-completion checks, result ownership, export artifact ownership, and Storage namespace isolation were not loosened during debugging
+  - Files changed in this pass:
+    - `apps/web/app/api/assessment/export/pdf/fast/[id]/route.ts`
+    - `apps/web/app/api/assessment/export/pdf/pro/[id]/route.ts`
+    - `apps/web/app/globals.css`
+    - `apps/web/components/assessment/assessment-preview-shell.tsx`
+    - `apps/web/lib/server/assessment-pdf-download.ts`
+    - `apps/web/lib/server/assessment-print-renderer.ts`
+    - `apps/web/package-lock.json`
+    - `apps/web/scripts/normalize-standalone.mjs`
+    - `zootopia-club-next-ledger.txt`
+  - Verification:
+    - reread the mandatory project memory and then cross-checked the current repo against the live code paths before editing; also reviewed the relevant local Next.js docs under `node_modules/next/dist/docs/01-app/01-getting-started/15-route-handlers.md` and official Firebase App Hosting, Puppeteer, and `@sparticuz/chromium` documentation before patching the runtime seams
+    - `npm run lint --workspace @zootopia/web` passed
+    - `npm run typecheck --workspace @zootopia/web` passed
+    - `npm run build --workspace @zootopia/web` passed with `/api/assessment/export/pdf/fast/[id]`, `/api/assessment/export/pdf/pro/[id]`, `/assessment/preview/[id]`, and `/assessment/results/[id]` still present in the final route tree
+    - `npm ci --ignore-scripts --workspaces=false --dry-run` in `apps/web` succeeded after the lockfile refresh, confirming the app-local install contract is now aligned for App Hosting builds
+    - verified the rebuilt standalone output now contains `apps/web/.next/standalone/node_modules/@sparticuz/chromium/bin/al2023.tar.br`, `chromium.br`, `fonts.tar.br`, and `swiftshader.tar.br`; this closes the hosted packaged-browser path that the earlier standalone bundle still left incomplete at the package root
+    - verified the rebuilt trace split still isolates the premium browser payload to the Pro lane: `apps/web/.next/server/app/api/assessment/export/pdf/pro/[id]/route.js.nft.json` includes `@sparticuz/chromium` and `puppeteer-core`, while the Fast lane trace does not
+    - ran a direct local Chrome/Puppeteer smoke against representative light and dark file-surface HTML using the patched `load` + settle strategy and generated both PDFs successfully (`light` 131359 bytes, `dark` 160976 bytes), which confirms the local Pro runtime seam and the former dark-theme timeout boundary now behave as expected
+    - authenticated click-through verification of the real protected preview page and live Firebase App Hosting execution could not be completed in this environment because no signed-in protected session or deployed App Hosting runtime was available here after the patch; final verification is therefore code-level plus build/trace/install/smoke validation rather than a live end-to-end export walkthrough
