@@ -69,7 +69,7 @@ export function AssessmentResultViewer({
           {preview.questions.map((question) => (
             <article
               key={question.id}
-              className={`rounded-[1.5rem] border px-5 py-5 ${
+              className={`rounded-[1.5rem] border px-4 py-4 sm:px-5 sm:py-5 ${
                 dark
                   ? "border-white/10 bg-slate-950/45"
                   : "border-slate-200 bg-slate-50/85"
@@ -98,22 +98,38 @@ export function AssessmentResultViewer({
                 ) : null}
               </div>
 
-              <h3 className="mt-4 whitespace-pre-wrap text-lg font-semibold leading-8 text-inherit">
+              <h3 className="mt-4 whitespace-pre-wrap text-[1.02rem] font-semibold leading-7 text-inherit sm:text-lg sm:leading-8">
                 {question.stem}
               </h3>
 
-              {question.choiceLines.length > 0 ? (
-                <div className="mt-4 grid gap-2">
-                  {question.choiceLines.map((choiceLine, choiceIndex) => (
+              {question.choices.length > 0 ? (
+                // Assessment preview, saved results, and exports intentionally share the same
+                // parsed MCQ hierarchy so answer choices stay beneath the stem and four-choice
+                // questions can use a compact 2x2 grid without mutating the saved record text.
+                <div
+                  className={`mt-4 grid gap-2.5 ${
+                    question.choiceLayout === "grid-2x2" ? "sm:grid-cols-2" : ""
+                  }`}
+                >
+                  {question.choices.map((choice, choiceIndex) => (
                     <div
                       key={`${question.id}-${choiceIndex}`}
-                      className={`rounded-[1.1rem] border px-4 py-3 text-sm font-medium leading-6 ${
+                      className={`flex items-start gap-3 rounded-[1.1rem] border px-4 py-3 text-sm leading-6 ${
                         dark
                           ? "border-white/10 bg-white/[0.04] text-white/82"
                           : "border-slate-200 bg-white/88 text-slate-700"
                       }`}
                     >
-                      {choiceLine}
+                      <span
+                        className={`min-w-[2.2rem] text-sm font-bold ${
+                          dark ? "text-emerald-100" : "text-emerald-700"
+                        }`}
+                      >
+                        {choice.marker ? `${choice.marker})` : "•"}
+                      </span>
+                      <span className="min-w-0 flex-1 font-medium">
+                        {choice.text}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -145,7 +161,7 @@ export function AssessmentResultViewer({
                   {messages.assessmentAnswerLabel}
                 </p>
                 <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-inherit/80">
-                  {question.answer}
+                  {question.answerDisplay}
                 </p>
               </div>
 

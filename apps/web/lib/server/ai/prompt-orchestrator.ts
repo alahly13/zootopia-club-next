@@ -161,6 +161,10 @@ export function buildAssessmentPrompt(input: {
     )}`,
     `Provider runtime configured: ${input.providerConfigured ? "yes" : "no"}`,
     "Authoring instructions: Keep the wording scientifically accurate, concise, and reliable. Each item must include a direct answer, a brief rationale, and one to three short topic tags.",
+    /* Assessment preview, result, and export surfaces now preserve Unicode content end-to-end.
+       Keep this orchestration rule explicit so tasteful emojis remain intentional output instead
+       of being treated as accidental noise by future prompt or normalization changes. */
+    "Presentation instructions: Tasteful, relevant emojis are welcome when they genuinely improve clarity, memory, or tone. Use them sparingly, keep them educationally appropriate, and preserve any emoji characters directly inside the JSON strings.",
     describeAssessmentModeRule(input.mode),
     // Keep an explicit fallback request in the orchestration prompt so document-only runs still produce focused assessments.
     `User request: ${userRequest}`,

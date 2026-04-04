@@ -11,6 +11,7 @@ type ThemeToggleProps = {
   label: string;
   labels: Record<ThemeMode, string>;
   variant?: "default" | "compact" | "toolbar" | "cycle-icon";
+  modes?: readonly ThemeMode[];
 };
 
 const THEME_ORDER: ThemeMode[] = ["light", "dark", "system"];
@@ -30,12 +31,27 @@ export function ThemeToggle({
   label,
   labels,
   variant = "default",
+  modes,
 }: ThemeToggleProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const compact = variant === "compact";
   const toolbar = variant === "toolbar";
   const cycleIcon = variant === "cycle-icon";
+  const availableModes = modes?.length ? [...new Set(modes)] : THEME_ORDER;
+  /* The protected sidebar now exposes only light/dark while older cookies may still carry
+     "system". Resolve the visible selection from the active media preference so the relocated
+     shell control stays truthful without reintroducing a third visible option. */
+  const displayedTheme =
+    availableModes.includes(value)
+      ? value
+      : typeof window !== "undefined" &&
+          window.matchMedia("(prefers-color-scheme: light)").matches &&
+          availableModes.includes("light")
+        ? "light"
+        : availableModes.includes("dark")
+          ? "dark"
+          : availableModes[0]!;
 
   function applyTheme(nextTheme: ThemeMode) {
     writeCookie(ENV_KEYS.themeCookie, nextTheme);
@@ -46,8 +62,9 @@ export function ThemeToggle({
   }
 
   if (cycleIcon) {
-    const ActiveThemeIcon = THEME_ICONS[value];
-    const nextTheme = THEME_ORDER[(THEME_ORDER.indexOf(value) + 1) % THEME_ORDER.length];
+    const ActiveThemeIcon = THEME_ICONS[displayedTheme];
+    const nextTheme =
+      availableModes[(availableModes.indexOf(displayedTheme) + 1) % availableModes.length];
 
     return (
       <div className="toggle-group toggle-group--cycle-icon">
@@ -55,14 +72,14 @@ export function ThemeToggle({
         <div className="toggle-shell">
           <button
             type="button"
-            aria-label={`${label}: ${labels[value]}`}
-            title={`${label}: ${labels[value]}`}
+            aria-label={`${label}: ${labels[displayedTheme]}`}
+            title={`${label}: ${labels[displayedTheme]}`}
             disabled={isPending}
             onClick={() => applyTheme(nextTheme)}
             className="toggle-button toggle-button--idle"
           >
             <ActiveThemeIcon className="h-4 w-4" />
-            <span className="sr-only">{labels[value]}</span>
+            <span className="sr-only">{labels[displayedTheme]}</span>
           </button>
         </div>
       </div>
@@ -77,8 +94,8 @@ export function ThemeToggle({
     >
       <p className={toolbar ? "sr-only" : "toggle-label"}>{label}</p>
       <div className="toggle-shell">
-        {(["light", "dark", "system"] as const).map((theme) => {
-          const selected = value === theme;
+        {availableModes.map((theme) => {
+          const selected = displayedTheme === theme;
           return (
             <button
               key={theme}

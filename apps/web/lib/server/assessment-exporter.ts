@@ -9,7 +9,13 @@ import {
   HeadingLevel,
   Packer,
   Paragraph,
+  Table,
+  TableBorders,
+  TableCell,
+  TableLayoutType,
+  TableRow,
   TextRun,
+  WidthType,
 } from "docx";
 
 function slugifyFileSegment(value: string) {
@@ -32,6 +38,121 @@ export function buildAssessmentJsonExport(preview: NormalizedAssessmentPreview) 
 
 export function buildAssessmentMarkdownExport(preview: NormalizedAssessmentPreview) {
   return preview.markdownExport;
+}
+
+function buildChoiceRuns(marker: string | null, text: string) {
+  return [
+    new TextRun({
+      text: marker ? `${marker}) ` : "• ",
+      bold: true,
+      color: "0f766e",
+    }),
+    new TextRun({
+      text,
+    }),
+  ];
+}
+
+function buildChoiceParagraph(input: {
+  marker: string | null;
+  text: string;
+  alignment: (typeof AlignmentType)[keyof typeof AlignmentType];
+  isRtl: boolean;
+}) {
+  return new Paragraph({
+    alignment: input.alignment,
+    bidirectional: input.isRtl,
+    indent: input.isRtl
+      ? {
+          right: 360,
+        }
+      : {
+          left: 360,
+        },
+    spacing: {
+      after: 80,
+    },
+    children: buildChoiceRuns(input.marker, input.text),
+  });
+}
+
+function buildChoiceTable(input: {
+  choices: NormalizedAssessmentPreview["questions"][number]["choices"];
+  alignment: (typeof AlignmentType)[keyof typeof AlignmentType];
+  isRtl: boolean;
+}) {
+  /* DOCX exports mirror the shared preview/PDF MCQ layout for compact four-choice questions.
+     Keep this as a display-only table layer so future agents do not push answer choices back into
+     the question stem or replace the current lightweight docx export path with ad-hoc formatting. */
+  return new Table({
+    alignment: input.alignment,
+    visuallyRightToLeft: input.isRtl,
+    layout: TableLayoutType.FIXED,
+    width: {
+      size: 100,
+      type: WidthType.PERCENTAGE,
+    },
+    columnWidths: [4500, 4500],
+    borders: TableBorders.NONE,
+    rows: [0, 2].map(
+      (startIndex) =>
+        new TableRow({
+          children: [0, 1].map((offset) => {
+            const choice = input.choices[startIndex + offset];
+
+            return new TableCell({
+              width: {
+                size: 50,
+                type: WidthType.PERCENTAGE,
+              },
+              margins: {
+                top: 90,
+                bottom: 90,
+                left: 120,
+                right: 120,
+              },
+              shading: {
+                fill: "F8FAFC",
+              },
+              borders: {
+                top: {
+                  color: "D6E2EF",
+                  size: 1,
+                  style: "single",
+                },
+                bottom: {
+                  color: "D6E2EF",
+                  size: 1,
+                  style: "single",
+                },
+                left: {
+                  color: "D6E2EF",
+                  size: 1,
+                  style: "single",
+                },
+                right: {
+                  color: "D6E2EF",
+                  size: 1,
+                  style: "single",
+                },
+              },
+              children: choice
+                ? [
+                    new Paragraph({
+                      alignment: input.alignment,
+                      bidirectional: input.isRtl,
+                      spacing: {
+                        line: 300,
+                      },
+                      children: buildChoiceRuns(choice.marker, choice.text),
+                    }),
+                  ]
+                : [new Paragraph({})],
+            });
+          }),
+        }),
+    ),
+  });
 }
 
 export async function buildAssessmentDocxExport(preview: NormalizedAssessmentPreview) {
@@ -60,12 +181,12 @@ export async function buildAssessmentDocxExport(preview: NormalizedAssessmentPre
             alignment: bodyAlignment,
             bidirectional: isRtl,
             spacing: {
-              after: 200,
+              after: 180,
             },
             children: [
               new TextRun({
                 text: preview.summary,
-                size: 24,
+                size: 22,
               }),
             ],
           }),
@@ -101,14 +222,14 @@ export async function buildAssessmentDocxExport(preview: NormalizedAssessmentPre
             ],
           }),
           ...preview.questions.flatMap((question) => {
-            const paragraphs = [
+            const paragraphs: Array<Paragraph | Table> = [
               new Paragraph({
                 heading: HeadingLevel.HEADING_2,
                 alignment: headingAlignment,
                 bidirectional: isRtl,
                 spacing: {
-                  before: 220,
-                  after: 120,
+                  before: 180,
+                  after: 90,
                 },
                 children: [
                   new TextRun({
@@ -119,31 +240,27 @@ export async function buildAssessmentDocxExport(preview: NormalizedAssessmentPre
               }),
             ];
 
-            if (question.choiceLines.length > 0) {
-              paragraphs.push(
-                ...question.choiceLines.map(
-                  (choiceLine) =>
-                    new Paragraph({
+            if (question.choices.length > 0) {
+              if (question.choiceLayout === "grid-2x2" && question.choices.length === 4) {
+                paragraphs.push(
+                  buildChoiceTable({
+                    choices: question.choices,
+                    alignment: bodyAlignment,
+                    isRtl,
+                  }),
+                );
+              } else {
+                paragraphs.push(
+                  ...question.choices.map((choice) =>
+                    buildChoiceParagraph({
+                      marker: choice.marker,
+                      text: choice.text,
                       alignment: bodyAlignment,
-                      bidirectional: isRtl,
-                      indent: isRtl
-                        ? {
-                            right: 420,
-                          }
-                        : {
-                            left: 420,
-                          },
-                      spacing: {
-                        after: 90,
-                      },
-                      children: [
-                        new TextRun({
-                          text: choiceLine,
-                        }),
-                      ],
+                      isRtl,
                     }),
-                ),
-              );
+                  ),
+                );
+              }
             }
 
             if (question.supplementalLines.length > 0) {
@@ -191,7 +308,7 @@ export async function buildAssessmentDocxExport(preview: NormalizedAssessmentPre
                     text: `${preview.locale === "ar" ? "الإجابة" : "Answer"}: `,
                     bold: true,
                   }),
-                  new TextRun(question.answer),
+                  new TextRun(question.answerDisplay),
                 ],
               }),
             );

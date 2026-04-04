@@ -1,5 +1,6 @@
 import type {
   AssessmentGenerationStatus,
+  AssessmentQuestionType,
   Locale,
 } from "@zootopia/shared-types";
 
@@ -10,15 +11,24 @@ export interface AssessmentPreviewMetadataItem {
   value: string;
 }
 
+export interface AssessmentPreviewChoiceItem {
+  marker: string | null;
+  text: string;
+  displayText: string;
+}
+
 export interface AssessmentPreviewQuestionItem {
   id: string;
   index: number;
+  questionType: AssessmentQuestionType | null;
   typeLabel: string | null;
   question: string;
   stem: string;
-  choiceLines: string[];
+  choices: AssessmentPreviewChoiceItem[];
+  choiceLayout: "stack" | "grid-2x2";
   supplementalLines: string[];
   answer: string;
+  answerDisplay: string;
   rationale: string | null;
   tags: string[];
 }

@@ -2,9 +2,15 @@ import "server-only";
 
 import type { AssessmentGeneration, AssessmentQuestionType, Locale } from "@zootopia/shared-types";
 
-import type { NormalizedAssessmentPreview } from "@/lib/assessment-preview-model";
+import type {
+  AssessmentPreviewQuestionItem,
+  NormalizedAssessmentPreview,
+} from "@/lib/assessment-preview-model";
 import { buildAssessmentFileSurface } from "@/lib/assessment-file-branding";
-import { deriveAssessmentQuestionDisplay } from "@/lib/assessment-question-display";
+import {
+  deriveAssessmentQuestionDisplay,
+  formatAssessmentAnswerDisplay,
+} from "@/lib/assessment-question-display";
 import {
   buildAssessmentDocxExportRoute,
   buildAssessmentJsonExportRoute,
@@ -84,10 +90,44 @@ function getStatusLabel(value: AssessmentGeneration["status"], messages: AppMess
     : messages.documentStatusReady;
 }
 
-function buildPlainTextExport(
-  generation: AssessmentGeneration,
-  messages: AppMessages,
-) {
+function buildPreviewQuestionItem(input: {
+  question: AssessmentGeneration["questions"][number];
+  index: number;
+  messages: AppMessages;
+}): AssessmentPreviewQuestionItem {
+  const { question, index, messages } = input;
+
+  // Preview, result, Markdown, DOCX, and PDF surfaces must all consume the same interpreted
+  // question hierarchy so inline provider-formatted MCQ choices never drift back into the stem.
+  const display = deriveAssessmentQuestionDisplay(question.question);
+
+  return {
+    id: question.id,
+    index,
+    questionType: question.type ?? null,
+    typeLabel: question.type ? getQuestionTypeLabel(question.type, messages) : null,
+    question: question.question,
+    stem: display.stem,
+    choices: display.choices,
+    choiceLayout: display.choiceLayout,
+    supplementalLines: display.supplementalLines,
+    answer: question.answer,
+    answerDisplay: formatAssessmentAnswerDisplay({
+      answerText: question.answer,
+      questionType: question.type,
+      choices: display.choices,
+    }),
+    rationale: question.rationale ?? null,
+    tags: question.tags ?? [],
+  };
+}
+
+function buildPlainTextExport(input: {
+  generation: AssessmentGeneration;
+  messages: AppMessages;
+  questions: AssessmentPreviewQuestionItem[];
+}) {
+  const { generation, messages, questions } = input;
   const lines = [
     generation.title,
     generation.meta.summary,
@@ -106,12 +146,18 @@ function buildPlainTextExport(
 
   lines.push("");
 
-  for (const [index, question] of generation.questions.entries()) {
-    lines.push(`${index + 1}. ${question.question}`);
-    if (question.type) {
-      lines.push(`   ${messages.assessmentQuestionTypesLabel}: ${getQuestionTypeLabel(question.type, messages)}`);
+  for (const question of questions) {
+    lines.push(`${question.index + 1}. ${question.stem}`);
+    if (question.choices.length > 0) {
+      lines.push(...question.choices.map((choice) => `   ${choice.displayText}`));
     }
-    lines.push(`   ${messages.assessmentAnswerLabel}: ${question.answer}`);
+    if (question.supplementalLines.length > 0) {
+      lines.push(...question.supplementalLines.map((line) => `   ${line}`));
+    }
+    if (question.typeLabel) {
+      lines.push(`   ${messages.assessmentQuestionTypesLabel}: ${question.typeLabel}`);
+    }
+    lines.push(`   ${messages.assessmentAnswerLabel}: ${question.answerDisplay}`);
     if (question.rationale) {
       lines.push(`   ${messages.assessmentRationaleLabel}: ${question.rationale}`);
     }
@@ -121,13 +167,15 @@ function buildPlainTextExport(
     lines.push("");
   }
 
-  return lines.join("\n").trim();
+  return lines.filter((line): line is string => line != null).join("\n").trim();
 }
 
-function buildMarkdownExport(
-  generation: AssessmentGeneration,
-  messages: AppMessages,
-) {
+function buildMarkdownExport(input: {
+  generation: AssessmentGeneration;
+  messages: AppMessages;
+  questions: AssessmentPreviewQuestionItem[];
+}) {
+  const { generation, messages, questions } = input;
   const signature = getProtectedSignatureCopy(generation.meta.language);
   const lines = [
     `# ${generation.title}`,
@@ -148,13 +196,21 @@ function buildMarkdownExport(
 
   lines.push("", "## Questions", "");
 
-  for (const [index, question] of generation.questions.entries()) {
-    lines.push(`### ${index + 1}. ${question.question}`);
+  for (const question of questions) {
+    lines.push(`### ${question.index + 1}. ${question.stem.replace(/\n+/g, " ")}`);
     lines.push("");
-    if (question.type) {
-      lines.push(`- ${messages.assessmentQuestionTypesLabel}: ${getQuestionTypeLabel(question.type, messages)}`);
+    if (question.choices.length > 0) {
+      lines.push(...question.choices.map((choice) => `- ${choice.displayText}`));
+      lines.push("");
     }
-    lines.push(`- ${messages.assessmentAnswerLabel}: ${question.answer}`);
+    if (question.supplementalLines.length > 0) {
+      lines.push(...question.supplementalLines);
+      lines.push("");
+    }
+    if (question.typeLabel) {
+      lines.push(`- ${messages.assessmentQuestionTypesLabel}: ${question.typeLabel}`);
+    }
+    lines.push(`- ${messages.assessmentAnswerLabel}: ${question.answerDisplay}`);
     if (question.rationale) {
       lines.push(`- ${messages.assessmentRationaleLabel}: ${question.rationale}`);
     }
@@ -181,6 +237,13 @@ export function buildAssessmentPreview(input: {
     platformName: messages.appName,
     platformTagline: messages.tagline,
   });
+  const questions = generation.questions.map((question, index) =>
+    buildPreviewQuestionItem({
+      question,
+      index,
+      messages,
+    }),
+  );
 
   return {
     id: generation.id,
@@ -226,27 +289,18 @@ export function buildAssessmentPreview(input: {
         value: expiresAtLabel,
       },
     ],
-    questions: generation.questions.map((question, index) => {
-      // Build a display-focused stem/options split here so every preview/export surface can
-      // render the same question hierarchy from the current normalized record shape.
-      const display = deriveAssessmentQuestionDisplay(question.question);
-
-      return {
-        id: question.id,
-        index,
-        typeLabel: question.type ? getQuestionTypeLabel(question.type, messages) : null,
-        question: question.question,
-        stem: display.stem,
-        choiceLines: display.choiceLines,
-        supplementalLines: display.supplementalLines,
-        answer: question.answer,
-        rationale: question.rationale ?? null,
-        tags: question.tags ?? [],
-      };
-    }),
+    questions,
     fileSurface,
-    plainTextExport: buildPlainTextExport(generation, messages),
-    markdownExport: buildMarkdownExport(generation, messages),
+    plainTextExport: buildPlainTextExport({
+      generation,
+      messages,
+      questions,
+    }),
+    markdownExport: buildMarkdownExport({
+      generation,
+      messages,
+      questions,
+    }),
     previewRoute: generation.previewRoute,
     resultRoute: generation.resultRoute,
     exportRoutes: {

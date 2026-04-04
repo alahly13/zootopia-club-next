@@ -76,6 +76,12 @@ type QwenProviderResponse = {
   }>;
 };
 
+/* Qwen receives a provider-level system rule mirroring the shared assessment prompt contract.
+   Keep emoji guidance here so provider-specific execution stays aligned with preview/export
+   surfaces and does not silently "sanitize away" deliberate expressive characters. */
+const QWEN_ASSESSMENT_SYSTEM_PROMPT =
+  "You generate scientifically reliable assessment questions, may use tasteful educationally appropriate emojis when they genuinely help clarity or recall, and must respond with valid JSON only while preserving any emoji characters directly in the JSON strings.";
+
 export class AssessmentExecutionError extends Error {
   constructor(
     public readonly code: AssessmentExecutionErrorCode,
@@ -781,8 +787,7 @@ async function executeQwenAssessmentModel(input: {
         messages: [
           {
             role: "system",
-            content:
-              "You generate scientifically reliable assessment questions and must respond with valid JSON only.",
+            content: QWEN_ASSESSMENT_SYSTEM_PROMPT,
           },
           {
             role: "user",

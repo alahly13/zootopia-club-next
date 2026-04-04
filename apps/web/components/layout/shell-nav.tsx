@@ -216,6 +216,7 @@ export function ShellNav({
                 <ThemeToggle
                   variant="compact"
                   value={themeMode}
+                  modes={["light", "dark"]}
                   label={messages.themeLabel || "Theme"}
                   labels={{
                     light: messages.themeLight || "Light",
@@ -266,6 +267,7 @@ export function ShellNav({
              <ThemeToggle
                variant="cycle-icon"
                value={themeMode}
+               modes={["light", "dark"]}
                label={messages.themeLabel || "Theme"}
                labels={{
                  light: messages.themeLight || "Light",

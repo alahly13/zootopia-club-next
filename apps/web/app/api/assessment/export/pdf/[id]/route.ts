@@ -8,7 +8,10 @@ import {
 } from "@/lib/server/assessment-artifact-storage";
 import { buildAssessmentPreview } from "@/lib/server/assessment-preview";
 import { buildAssessmentFileQrDataUrl } from "@/lib/server/assessment-file-qr";
-import { buildAssessmentPrintHtml } from "@/lib/server/assessment-print-renderer";
+import {
+  ASSESSMENT_PRINT_LAYOUT_VERSION,
+  buildAssessmentPrintHtml,
+} from "@/lib/server/assessment-print-renderer";
 import {
   appendAdminLog,
   getAssessmentGenerationForOwner,
@@ -71,8 +74,11 @@ export async function GET(
   const existingBuffer = existingArtifact
     ? await loadAssessmentArtifact(existingArtifact, user.uid)
     : null;
+  const expectedFileName = `${preview.id}-${themeMode}-${ASSESSMENT_PRINT_LAYOUT_VERSION}.html`;
+  const canReuseExistingArtifact =
+    existingArtifact?.fileName === expectedFileName && Boolean(existingBuffer);
 
-  if (!existingArtifact || !existingBuffer) {
+  if (!canReuseExistingArtifact) {
     const qrCodeDataUrl = await buildAssessmentFileQrDataUrl();
     const html = buildAssessmentPrintHtml({ preview, themeMode, qrCodeDataUrl });
     const storedArtifact = await persistAssessmentExportArtifact({
@@ -81,7 +87,10 @@ export async function GET(
       kind: "export-print-html",
       locale: uiContext.locale,
       themeMode,
-      fileName: `${preview.id}-${themeMode}.html`,
+      /* Print HTML is artifact-cached, so keep the renderer version in the file name.
+         That lets the route invalidate older cached layouts without inventing a new export route
+         or changing the owner-scoped artifact model used by existing assessment downloads. */
+      fileName: expectedFileName,
       fileExtension: "html",
       contentType: "text/html; charset=utf-8",
       body: html,
@@ -111,6 +120,7 @@ export async function GET(
       route: "/api/assessment/export/pdf/[id]",
       metadata: {
         themeMode,
+        layoutVersion: ASSESSMENT_PRINT_LAYOUT_VERSION,
       },
     });
 
@@ -132,10 +142,13 @@ export async function GET(
     route: "/api/assessment/export/pdf/[id]",
     metadata: {
       themeMode,
+      layoutVersion: ASSESSMENT_PRINT_LAYOUT_VERSION,
     },
   });
 
-  return new Response(new TextDecoder().decode(existingBuffer), {
+  const reusableBuffer = existingBuffer as Uint8Array;
+
+  return new Response(new TextDecoder().decode(reusableBuffer), {
     headers: {
       "content-type": "text/html; charset=utf-8",
     },
