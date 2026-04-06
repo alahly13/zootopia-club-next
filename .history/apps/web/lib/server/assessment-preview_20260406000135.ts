@@ -110,7 +110,7 @@ function getProviderLabel(value: AssessmentGeneration["meta"]["provider"], messa
 }
 
 function getQuestionTypeLabel(
-  value: AssessmentQuestionType | "unknown" | null | undefined,
+  value: AssessmentQuestionType | null | undefined,
   messages: AppMessages,
 ) {
   switch (value) {
@@ -226,15 +226,13 @@ function buildPreviewQuestionItem(input: {
     answerText: question.answer,
     choices: display.choices,
   });
-  const resolvedQuestionType =
-    question.type ?? (choices.length > 0 ? "mcq" : null);
   const questionDifficulty = question.difficulty ?? defaultDifficulty;
 
   return {
     id: question.id,
     index,
-    questionType: resolvedQuestionType,
-    typeLabel: getQuestionTypeLabel(resolvedQuestionType, messages),
+    questionType: question.type ?? null,
+    typeLabel: getQuestionTypeLabel(question.type, messages),
     difficulty: questionDifficulty,
     difficultyLabel: getQuestionDifficultyLabel(questionDifficulty, messages),
     question: question.question,
@@ -295,7 +293,9 @@ function buildTypeAwareExportDetails(input: {
       if (pairs.length > 0) {
         lines.push(`${linePrefix}${localizeCopy(locale, "Matching pairs", "أزواج التوصيل")}:`);
         lines.push(
-          ...pairs.map((pair) => `${linePrefix}${pair.left} -> ${pair.right}`),
+          ...pairs.map(
+            (pair) => `${linePrefix}${localizeCopy(locale, "-", "-\u200f")} ${pair.left} -> ${pair.right}`,
+          ),
         );
       }
       break;
@@ -365,9 +365,7 @@ function buildPlainTextExport(input: {
       lines.push(`   ${messages.assessmentQuestionTypesLabel}: ${question.typeLabel}`);
     }
     if (question.difficultyLabel) {
-      lines.push(
-        `   ${localizeCopy(generation.meta.language, "Question difficulty", "صعوبة السؤال")}: ${question.difficultyLabel}`,
-      );
+      lines.push(`   ${messages.assessmentQuestionDifficultyLabel}: ${question.difficultyLabel}`);
     }
     lines.push(`   ${messages.assessmentAnswerLabel}: ${question.answerDisplay}`);
     lines.push(
@@ -436,9 +434,7 @@ function buildMarkdownExport(input: {
       lines.push(`- ${messages.assessmentQuestionTypesLabel}: ${question.typeLabel}`);
     }
     if (question.difficultyLabel) {
-      lines.push(
-        `- ${localizeCopy(generation.meta.language, "Question difficulty", "صعوبة السؤال")}: ${question.difficultyLabel}`,
-      );
+      lines.push(`- ${messages.assessmentQuestionDifficultyLabel}: ${question.difficultyLabel}`);
     }
     lines.push(`- ${messages.assessmentAnswerLabel}: ${question.answerDisplay}`);
     lines.push(

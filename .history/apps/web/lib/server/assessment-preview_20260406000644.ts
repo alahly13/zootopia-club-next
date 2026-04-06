@@ -110,7 +110,7 @@ function getProviderLabel(value: AssessmentGeneration["meta"]["provider"], messa
 }
 
 function getQuestionTypeLabel(
-  value: AssessmentQuestionType | "unknown" | null | undefined,
+  value: AssessmentQuestionType | null | undefined,
   messages: AppMessages,
 ) {
   switch (value) {

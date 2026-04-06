@@ -110,7 +110,7 @@ function getProviderLabel(value: AssessmentGeneration["meta"]["provider"], messa
 }
 
 function getQuestionTypeLabel(
-  value: AssessmentQuestionType | "unknown" | null | undefined,
+  value: AssessmentQuestionType | null | undefined,
   messages: AppMessages,
 ) {
   switch (value) {
@@ -214,10 +214,9 @@ function getStatusLabel(value: AssessmentGeneration["status"], messages: AppMess
 function buildPreviewQuestionItem(input: {
   question: AssessmentGeneration["questions"][number];
   index: number;
-  defaultDifficulty: AssessmentGeneration["meta"]["difficulty"];
   messages: AppMessages;
 }): AssessmentPreviewQuestionItem {
-  const { question, index, defaultDifficulty, messages } = input;
+  const { question, index, messages } = input;
 
   // Preview, result, Markdown, DOCX, and PDF surfaces must all consume the same interpreted
   // question hierarchy so inline provider-formatted MCQ choices never drift back into the stem.
@@ -226,17 +225,12 @@ function buildPreviewQuestionItem(input: {
     answerText: question.answer,
     choices: display.choices,
   });
-  const resolvedQuestionType =
-    question.type ?? (choices.length > 0 ? "mcq" : null);
-  const questionDifficulty = question.difficulty ?? defaultDifficulty;
 
   return {
     id: question.id,
     index,
-    questionType: resolvedQuestionType,
-    typeLabel: getQuestionTypeLabel(resolvedQuestionType, messages),
-    difficulty: questionDifficulty,
-    difficultyLabel: getQuestionDifficultyLabel(questionDifficulty, messages),
+    questionType: question.type ?? null,
+    typeLabel: question.type ? getQuestionTypeLabel(question.type, messages) : null,
     question: question.question,
     stem: display.stem,
     /* Preview/result/PDF question cards now share one server-authored correct-choice flag.
@@ -256,81 +250,12 @@ function buildPreviewQuestionItem(input: {
   };
 }
 
-function buildTypeAwareExportDetails(input: {
-  locale: Locale;
-  question: AssessmentPreviewQuestionItem;
-  linePrefix: string;
-}) {
-  const { locale, question, linePrefix } = input;
-  const lines: string[] = [];
-
-  /* These branches protect the mixed-question rendering/export contract.
-     Keep per-type metadata extraction centralized so preview/result/Markdown share the same
-     assumptions instead of silently collapsing back into MCQ-only text blocks. */
-  switch (question.questionType) {
-    case "true_false": {
-      const value = resolveTrueFalseAnswerValue(question.answerDisplay || question.answer);
-      if (value) {
-        lines.push(
-          `${linePrefix}${localizeCopy(locale, "Resolved True/False", "قيمة صح / خطأ")}: ${
-            value === "true"
-              ? localizeCopy(locale, "True", "صح")
-              : localizeCopy(locale, "False", "خطأ")
-          }`,
-        );
-      }
-      break;
-    }
-    case "fill_blanks": {
-      const blankCount = countFillBlanks(question.stem);
-      if (blankCount > 0) {
-        lines.push(
-          `${linePrefix}${localizeCopy(locale, "Blank count", "عدد الفراغات")}: ${blankCount}`,
-        );
-      }
-      break;
-    }
-    case "matching": {
-      const pairs = extractMatchingPairs(question.answerDisplay || question.answer);
-      if (pairs.length > 0) {
-        lines.push(`${linePrefix}${localizeCopy(locale, "Matching pairs", "أزواج التوصيل")}:`);
-        lines.push(
-          ...pairs.map((pair) => `${linePrefix}${pair.left} -> ${pair.right}`),
-        );
-      }
-      break;
-    }
-    case "multiple_response": {
-      const resolvedAnswers =
-        question.choices.filter((choice) => choice.isCorrect).map((choice) => choice.displayText) ||
-        [];
-      const fallbackAnswers = splitMultipleResponseAnswers(
-        question.answerDisplay || question.answer,
-      );
-      const answers = resolvedAnswers.length > 0 ? resolvedAnswers : fallbackAnswers;
-
-      if (answers.length > 0) {
-        lines.push(
-          `${linePrefix}${localizeCopy(locale, "Resolved correct options", "الخيارات الصحيحة")}: ${answers.join(", ")}`,
-        );
-      }
-      break;
-    }
-    default:
-      break;
-  }
-
-  return lines;
-}
-
 function buildPlainTextExport(input: {
   generation: AssessmentGeneration;
   messages: AppMessages;
   questions: AssessmentPreviewQuestionItem[];
-  compositionBadges: AssessmentPreviewCompositionBadge[];
 }) {
-  const { generation, messages, questions, compositionBadges } = input;
-  const questionTypeSummaryLine = buildQuestionTypeSummaryLine(compositionBadges);
+  const { generation, messages, questions } = input;
   const lines = [
     generation.title,
     generation.meta.summary,
@@ -342,10 +267,6 @@ function buildPlainTextExport(input: {
     `${messages.assessmentModelLabel}: ${generation.meta.modelLabel}`,
     `${messages.assessmentInputModeLabel}: ${getInputModeLabel(generation.meta.inputMode, messages)}`,
   ];
-
-  if (questionTypeSummaryLine) {
-    lines.push(`${messages.assessmentQuestionTypesLabel}: ${questionTypeSummaryLine}`);
-  }
 
   if (generation.meta.sourceDocument?.fileName) {
     lines.push(`${messages.assessmentSourceDocument}: ${generation.meta.sourceDocument.fileName}`);
@@ -364,19 +285,7 @@ function buildPlainTextExport(input: {
     if (question.typeLabel) {
       lines.push(`   ${messages.assessmentQuestionTypesLabel}: ${question.typeLabel}`);
     }
-    if (question.difficultyLabel) {
-      lines.push(
-        `   ${localizeCopy(generation.meta.language, "Question difficulty", "صعوبة السؤال")}: ${question.difficultyLabel}`,
-      );
-    }
     lines.push(`   ${messages.assessmentAnswerLabel}: ${question.answerDisplay}`);
-    lines.push(
-      ...buildTypeAwareExportDetails({
-        locale: generation.meta.language,
-        question,
-        linePrefix: "   ",
-      }),
-    );
     if (question.rationale) {
       lines.push(`   ${messages.assessmentRationaleLabel}: ${question.rationale}`);
     }
@@ -393,11 +302,9 @@ function buildMarkdownExport(input: {
   generation: AssessmentGeneration;
   messages: AppMessages;
   questions: AssessmentPreviewQuestionItem[];
-  compositionBadges: AssessmentPreviewCompositionBadge[];
   footerText: string;
 }) {
-  const { generation, messages, questions, compositionBadges, footerText } = input;
-  const questionTypeSummaryLine = buildQuestionTypeSummaryLine(compositionBadges);
+  const { generation, messages, questions, footerText } = input;
   const lines = [
     `# ${generation.title}`,
     "",
@@ -410,10 +317,6 @@ function buildMarkdownExport(input: {
     `- ${messages.assessmentModelLabel}: ${generation.meta.modelLabel}`,
     `- ${messages.assessmentInputModeLabel}: ${getInputModeLabel(generation.meta.inputMode, messages)}`,
   ];
-
-  if (questionTypeSummaryLine) {
-    lines.push(`- ${messages.assessmentQuestionTypesLabel}: ${questionTypeSummaryLine}`);
-  }
 
   if (generation.meta.sourceDocument?.fileName) {
     lines.push(`- ${messages.assessmentSourceDocument}: ${generation.meta.sourceDocument.fileName}`);
@@ -435,19 +338,7 @@ function buildMarkdownExport(input: {
     if (question.typeLabel) {
       lines.push(`- ${messages.assessmentQuestionTypesLabel}: ${question.typeLabel}`);
     }
-    if (question.difficultyLabel) {
-      lines.push(
-        `- ${localizeCopy(generation.meta.language, "Question difficulty", "صعوبة السؤال")}: ${question.difficultyLabel}`,
-      );
-    }
     lines.push(`- ${messages.assessmentAnswerLabel}: ${question.answerDisplay}`);
-    lines.push(
-      ...buildTypeAwareExportDetails({
-        locale: generation.meta.language,
-        question,
-        linePrefix: "- ",
-      }),
-    );
     if (question.rationale) {
       lines.push(`- ${messages.assessmentRationaleLabel}: ${question.rationale}`);
     }
@@ -468,24 +359,16 @@ export function buildAssessmentPreview(input: {
   messages: AppMessages;
 }): NormalizedAssessmentPreview {
   const { generation, locale, messages } = input;
-  const contentLanguage = detectPrimaryAssessmentLanguage(generation);
-  const direction = contentLanguage === "ar" ? "rtl" : "ltr";
   const generatedAtLabel = formatDateLabel(generation.createdAt, locale);
   const expiresAtLabel = formatDateLabel(generation.expiresAt, locale);
   const fileSurface = buildAssessmentFileSurface({
     platformName: messages.appName,
     platformTagline: messages.tagline,
   });
-  const compositionBadges = buildCompositionBadges({
-    generation,
-    messages,
-  });
-  const questionTypeSummaryLine = buildQuestionTypeSummaryLine(compositionBadges);
   const questions = generation.questions.map((question, index) =>
     buildPreviewQuestionItem({
       question,
       index,
-      defaultDifficulty: generation.meta.difficulty,
       messages,
     }),
   );
@@ -495,8 +378,7 @@ export function buildAssessmentPreview(input: {
     title: generation.title,
     summary: generation.meta.summary,
     locale,
-    contentLanguage,
-    direction,
+    direction: directionForLocale(locale),
     status: generation.status,
     statusLabel: getStatusLabel(generation.status, messages),
     modeLabel: getModeLabel(generation.meta.mode, messages),
@@ -530,33 +412,22 @@ export function buildAssessmentPreview(input: {
         label: messages.assessmentInputModeLabel,
         value: getInputModeLabel(generation.meta.inputMode, messages),
       },
-      ...(questionTypeSummaryLine
-        ? [
-            {
-              label: messages.assessmentQuestionTypesLabel,
-              value: questionTypeSummaryLine,
-            },
-          ]
-        : []),
       {
         label: messages.assessmentExpiresLabel,
         value: expiresAtLabel,
       },
     ],
-    compositionBadges,
     questions,
     fileSurface,
     plainTextExport: buildPlainTextExport({
       generation,
       messages,
       questions,
-      compositionBadges,
     }),
     markdownExport: buildMarkdownExport({
       generation,
       messages,
       questions,
-      compositionBadges,
       /* Markdown exports should reuse the same branded footer line as DOCX/PDF/file previews
          so extracted artifacts stay consistent even though Markdown has no visual card layout. */
       footerText: fileSurface.footerText || ASSESSMENT_FILE_FOOTER_TEXT,

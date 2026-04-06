@@ -983,12 +983,6 @@ export function buildAssessmentPrintHtml(input: {
         font-size: 9.7px;
       }
 
-      .question-card--first-page .question-difficulty,
-      .question-card--compact .question-difficulty {
-        padding: 2px 6px;
-        font-size: 9.2px;
-      }
-
       .question-card--first-page .question-title {
         font-size: 13.2px;
         line-height: 1.33;
@@ -1031,19 +1025,6 @@ export function buildAssessmentPrintHtml(input: {
         font-weight: 700;
       }
 
-      .question-difficulty {
-        display: inline-flex;
-        align-items: center;
-        margin-inline-start: auto;
-        padding: 4px 8px;
-        border-radius: 999px;
-        border: 1px solid ${dark ? "rgba(251, 191, 36, 0.32)" : "rgba(245, 158, 11, 0.32)"};
-        background: ${dark ? "rgba(245, 158, 11, 0.16)" : "rgba(254, 243, 199, 0.84)"};
-        color: ${dark ? "#fffbeb" : "#92400e"};
-        font-size: 10px;
-        font-weight: 800;
-      }
-
       .question-title {
         margin: 0;
         font-size: 15.4px;
@@ -1055,61 +1036,6 @@ export function buildAssessmentPrintHtml(input: {
         display: grid;
         gap: 5px;
         margin-top: 6px;
-      }
-
-      .true-false-grid {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 6px;
-        margin-top: 7px;
-      }
-
-      .true-false-pill {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        border: 1px solid var(--line);
-        border-radius: 10px;
-        padding: 6px 8px;
-        font-size: 11px;
-        font-weight: 700;
-        background: ${dark ? "rgba(7, 18, 35, 0.72)" : "rgba(255, 255, 255, 0.62)"};
-        color: var(--muted);
-      }
-
-      .true-false-pill--correct {
-        border-color: ${dark ? "rgba(103, 232, 216, 0.34)" : "rgba(16, 185, 129, 0.28)"};
-        background: ${dark
-          ? "linear-gradient(180deg, rgba(12, 34, 43, 0.78), rgba(7, 24, 36, 0.9))"
-          : "linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(236, 253, 245, 0.9))"};
-        color: ${dark ? "#e6fffa" : "#0f766e"};
-      }
-
-      .blank-count {
-        margin: 8px 0 0;
-        font-size: 11px;
-        font-weight: 700;
-        color: ${dark ? "#fde68a" : "#92400e"};
-      }
-
-      .type-detail-card {
-        border: 1px solid var(--line);
-        border-radius: 11px;
-        background: ${dark
-          ? "linear-gradient(180deg, rgba(6, 15, 30, 0.82), rgba(3, 10, 22, 0.64))"
-          : "linear-gradient(180deg, rgba(255, 255, 255, 0.62), rgba(241, 249, 247, 0.46))"};
-        padding: 8px 10px;
-        margin-top: 7px;
-      }
-
-      .type-detail-card p {
-        margin: 5px 0 0;
-        font-size: 12px;
-        line-height: 1.48;
-      }
-
-      .matching-pair-list p {
-        margin: 4px 0 0;
       }
 
       /* This paired grid is the PDF-specific counterpart to the preview/result layout.
@@ -1136,18 +1062,6 @@ export function buildAssessmentPrintHtml(input: {
       .question-card--compact .choice-list {
         gap: 4px;
         margin-top: 5px;
-      }
-
-      .question-card--first-page .true-false-grid,
-      .question-card--compact .true-false-grid {
-        margin-top: 5px;
-        gap: 4px;
-      }
-
-      .question-card--first-page .true-false-pill,
-      .question-card--compact .true-false-pill {
-        padding: 4px 6px;
-        font-size: 10.4px;
       }
 
       .question-card--first-page .choice-item,
@@ -1247,20 +1161,6 @@ export function buildAssessmentPrintHtml(input: {
         border-radius: 9px;
         padding: 5px 7px;
         margin-top: 4px;
-      }
-
-      .question-card--first-page .type-detail-card,
-      .question-card--compact .type-detail-card {
-        border-radius: 9px;
-        padding: 5px 7px;
-        margin-top: 4px;
-      }
-
-      .question-card--first-page .type-detail-card p,
-      .question-card--compact .type-detail-card p {
-        margin: 3px 0 0;
-        font-size: 11.1px;
-        line-height: 1.34;
       }
 
       .answer-label {
@@ -2161,7 +2061,7 @@ export function buildAssessmentPrintHtml(input: {
             <div class="hero-qr">
               <span class="hero-qr-card">
                 <img src="${escapeHtml(qrCodeDataUrl)}" alt="${escapeHtml(
-                  contentLanguage === "ar" ? "رمز QR لمنصة زوتوبيا" : "QR code for Zootopia Club",
+                  preview.locale === "ar" ? "رمز QR لمنصة زوتوبيا" : "QR code for Zootopia Club",
                 )}" />
               </span>
             </div>
@@ -2181,7 +2081,6 @@ export function buildAssessmentPrintHtml(input: {
             </header>
 
             <section class="meta-ribbon">${metadata}</section>
-            ${compositionBadges ? `<section class="composition-ribbon">${compositionBadges}</section>` : ""}
           </section>
 
           ${

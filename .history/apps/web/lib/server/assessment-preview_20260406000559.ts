@@ -110,7 +110,7 @@ function getProviderLabel(value: AssessmentGeneration["meta"]["provider"], messa
 }
 
 function getQuestionTypeLabel(
-  value: AssessmentQuestionType | "unknown" | null | undefined,
+  value: AssessmentQuestionType | null | undefined,
   messages: AppMessages,
 ) {
   switch (value) {
@@ -226,15 +226,13 @@ function buildPreviewQuestionItem(input: {
     answerText: question.answer,
     choices: display.choices,
   });
-  const resolvedQuestionType =
-    question.type ?? (choices.length > 0 ? "mcq" : null);
   const questionDifficulty = question.difficulty ?? defaultDifficulty;
 
   return {
     id: question.id,
     index,
-    questionType: resolvedQuestionType,
-    typeLabel: getQuestionTypeLabel(resolvedQuestionType, messages),
+    questionType: question.type ?? null,
+    typeLabel: getQuestionTypeLabel(question.type, messages),
     difficulty: questionDifficulty,
     difficultyLabel: getQuestionDifficultyLabel(questionDifficulty, messages),
     question: question.question,

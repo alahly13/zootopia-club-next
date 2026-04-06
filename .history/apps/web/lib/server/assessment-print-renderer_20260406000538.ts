@@ -2161,7 +2161,7 @@ export function buildAssessmentPrintHtml(input: {
             <div class="hero-qr">
               <span class="hero-qr-card">
                 <img src="${escapeHtml(qrCodeDataUrl)}" alt="${escapeHtml(
-                  contentLanguage === "ar" ? "رمز QR لمنصة زوتوبيا" : "QR code for Zootopia Club",
+                  preview.locale === "ar" ? "رمز QR لمنصة زوتوبيا" : "QR code for Zootopia Club",
                 )}" />
               </span>
             </div>
@@ -2181,7 +2181,6 @@ export function buildAssessmentPrintHtml(input: {
             </header>
 
             <section class="meta-ribbon">${metadata}</section>
-            ${compositionBadges ? `<section class="composition-ribbon">${compositionBadges}</section>` : ""}
           </section>
 
           ${

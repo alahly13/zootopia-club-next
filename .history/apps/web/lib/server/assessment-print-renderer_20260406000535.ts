@@ -983,12 +983,6 @@ export function buildAssessmentPrintHtml(input: {
         font-size: 9.7px;
       }
 
-      .question-card--first-page .question-difficulty,
-      .question-card--compact .question-difficulty {
-        padding: 2px 6px;
-        font-size: 9.2px;
-      }
-
       .question-card--first-page .question-title {
         font-size: 13.2px;
         line-height: 1.33;
@@ -1138,18 +1132,6 @@ export function buildAssessmentPrintHtml(input: {
         margin-top: 5px;
       }
 
-      .question-card--first-page .true-false-grid,
-      .question-card--compact .true-false-grid {
-        margin-top: 5px;
-        gap: 4px;
-      }
-
-      .question-card--first-page .true-false-pill,
-      .question-card--compact .true-false-pill {
-        padding: 4px 6px;
-        font-size: 10.4px;
-      }
-
       .question-card--first-page .choice-item,
       .question-card--compact .choice-item {
         gap: 6px;
@@ -1247,20 +1229,6 @@ export function buildAssessmentPrintHtml(input: {
         border-radius: 9px;
         padding: 5px 7px;
         margin-top: 4px;
-      }
-
-      .question-card--first-page .type-detail-card,
-      .question-card--compact .type-detail-card {
-        border-radius: 9px;
-        padding: 5px 7px;
-        margin-top: 4px;
-      }
-
-      .question-card--first-page .type-detail-card p,
-      .question-card--compact .type-detail-card p {
-        margin: 3px 0 0;
-        font-size: 11.1px;
-        line-height: 1.34;
       }
 
       .answer-label {
@@ -2161,7 +2129,7 @@ export function buildAssessmentPrintHtml(input: {
             <div class="hero-qr">
               <span class="hero-qr-card">
                 <img src="${escapeHtml(qrCodeDataUrl)}" alt="${escapeHtml(
-                  contentLanguage === "ar" ? "رمز QR لمنصة زوتوبيا" : "QR code for Zootopia Club",
+                  preview.locale === "ar" ? "رمز QR لمنصة زوتوبيا" : "QR code for Zootopia Club",
                 )}" />
               </span>
             </div>
@@ -2181,7 +2149,6 @@ export function buildAssessmentPrintHtml(input: {
             </header>
 
             <section class="meta-ribbon">${metadata}</section>
-            ${compositionBadges ? `<section class="composition-ribbon">${compositionBadges}</section>` : ""}
           </section>
 
           ${

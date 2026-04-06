@@ -552,7 +552,7 @@ function normalizeProviderQuestion(input: {
   fallback: AssessmentQuestion;
   index: number;
   language: Locale;
-}): AssessmentQuestion {
+}) {
   if (typeof input.question === "string") {
     return {
       ...input.fallback,
