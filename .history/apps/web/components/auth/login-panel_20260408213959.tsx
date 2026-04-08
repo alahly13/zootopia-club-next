@@ -138,11 +138,6 @@ export function LoginPanel({
   firebaseAdminReady,
 }: LoginPanelProps) {
   const router = useRouter();
-  /* Login page bootstrap ownership guard:
-     Regular user auth must create exactly one server session handoff per successful sign-in.
-     This ref deduplicates overlapping bootstrap attempts from popup/redirect race edges.
-     Future changes must keep bootstrap authority on /api/auth/bootstrap (server side). */
-  const bootstrapRequestRef = useRef<Promise<void> | null>(null);
   const [phase, setPhase] = useState<RegularLoginPhase>("idle");
   const [status, setStatus] = useState<AuthStatusDescriptor | null>(null);
   const firebaseConfigured = isFirebaseWebConfigured();
@@ -181,73 +176,39 @@ export function LoginPanel({
   }, [messages]);
 
   const bootstrapSession = useCallback(async (idToken: string) => {
-    if (bootstrapRequestRef.current) {
-      await bootstrapRequestRef.current;
-      return;
+    setFinishingStatus();
+
+    const response = await fetch("/api/auth/bootstrap", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      credentials: "same-origin",
+      body: JSON.stringify({ idToken }),
+    });
+
+    const payload = await readApiResult<{
+      user: SessionUser;
+      redirectTo: string;
+    }>(response, "BOOTSTRAP_RESPONSE_INVALID");
+
+    if (!response.ok || !payload.ok) {
+      throw createAuthFlowError(
+        payload.ok ? "BOOTSTRAP_FAILED" : payload.error.code,
+        payload.ok ? undefined : payload.error.message,
+      );
     }
 
-    const requestPromise = (async () => {
-      setFinishingStatus();
-
-      /* Login page network safety timeout:
-         Bootstrap is security-critical and should never leave UI in a perpetual busy state.
-         Abort and surface BOOTSTRAP_TIMEOUT so users can retry cleanly without stale spinners. */
-      const controller = new AbortController();
-      const timeoutHandle = window.setTimeout(() => {
-        controller.abort();
-      }, BOOTSTRAP_TIMEOUT_MS);
-
-      try {
-        const response = await fetch("/api/auth/bootstrap", {
-          method: "POST",
-          headers: {
-            "content-type": "application/json",
-          },
-          credentials: "same-origin",
-          body: JSON.stringify({ idToken }),
-          signal: controller.signal,
-        });
-
-        const payload = await readApiResult<{
-          user: SessionUser;
-          redirectTo: string;
-        }>(response, "BOOTSTRAP_RESPONSE_INVALID");
-
-        if (!response.ok || !payload.ok) {
-          throw createAuthFlowError(
-            payload.ok ? "BOOTSTRAP_FAILED" : payload.error.code,
-            payload.ok ? undefined : payload.error.message,
-          );
-        }
-
-        setPhase("success_handoff");
-        setStatus({
-          tone: "success",
-          icon: "success",
-          title: messages.loginStatusSuccessTitle,
-          body: messages.loginStatusSuccessBody,
-        });
-        await clearClientSession();
-        router.replace(payload.data.redirectTo || APP_ROUTES.upload);
-        router.refresh();
-      } catch (nextError) {
-        if (nextError instanceof DOMException && nextError.name === "AbortError") {
-          throw createAuthFlowError("BOOTSTRAP_TIMEOUT");
-        }
-
-        throw nextError;
-      } finally {
-        window.clearTimeout(timeoutHandle);
-      }
-    })();
-
-    bootstrapRequestRef.current = requestPromise;
-
-    try {
-      await requestPromise;
-    } finally {
-      bootstrapRequestRef.current = null;
-    }
+    setPhase("success_handoff");
+    setStatus({
+      tone: "success",
+      icon: "success",
+      title: messages.loginStatusSuccessTitle,
+      body: messages.loginStatusSuccessBody,
+    });
+    await clearClientSession();
+    router.replace(payload.data.redirectTo || APP_ROUTES.upload);
+    router.refresh();
   }, [clearClientSession, messages, router, setFinishingStatus]);
 
   useEffect(() => {
@@ -256,50 +217,17 @@ export function LoginPanel({
     }
 
     let cancelled = false;
-    /* Redirect return continuity check:
-       Popup fallback stores a same-tab intent marker before full-page redirect.
-       On return, this lets regular login recover state and report actionable refresh guidance
-       if browser policies/storage drop redirect result state. */
-    const redirectIntent = readRedirectIntent();
-
-    if (redirectIntent) {
-      setPhase("redirecting");
-      setStatus({
-        tone: "info",
-        icon: "working",
-        title: messages.loginStatusRedirectingTitle,
-        body: messages.loginStatusRedirectingBody,
-      });
-    }
 
     async function completeRedirectLogin() {
       try {
         const auth = await getEphemeralFirebaseClientAuth();
         const result = await getRedirectResult(auth);
-        if (cancelled) {
+        if (!result?.user || cancelled) {
           return;
         }
-
-        if (!result?.user) {
-          if (redirectIntent) {
-            clearRedirectIntent();
-            await clearClientSession();
-            setPhase("idle");
-            setStatus(
-              mapRegularLoginError(
-                createAuthFlowError("REDIRECT_RESULT_MISSING"),
-                messages,
-              ),
-            );
-          }
-          return;
-        }
-
-        clearRedirectIntent();
 
         await bootstrapSession(await result.user.getIdToken(true));
       } catch (nextError) {
-        clearRedirectIntent();
         await clearClientSession();
         if (!cancelled) {
           setPhase("idle");
@@ -320,26 +248,51 @@ export function LoginPanel({
       return;
     }
 
-    clearRedirectIntent();
-    setPhase("opening_google");
-    setStatus({
-      tone: "info",
-      icon: "working",
-      title: messages.loginStatusWorkingTitle,
-      body: messages.loginStatusWorkingBody,
-    });
+    const prefersRedirect = isRedirectPreferred();
+    let shouldReset = true;
 
-    const popupOpenedAtMs = Date.now();
+    setPhase(prefersRedirect ? "redirecting" : "opening_google");
+    setStatus(
+      prefersRedirect
+        ? {
+            tone: "info",
+            icon: "working",
+            title: messages.loginStatusRedirectingTitle,
+            body: messages.loginStatusRedirectingBody,
+          }
+        : {
+            tone: "info",
+            icon: "working",
+            title: messages.loginStatusWorkingTitle,
+            body: messages.loginStatusWorkingBody,
+          },
+    );
 
     try {
       const auth = await getEphemeralFirebaseClientAuth();
       auth.languageCode = locale;
       const provider = createGoogleProvider();
 
+      if (prefersRedirect) {
+        shouldReset = false;
+        await signInWithRedirect(auth, provider);
+        return;
+      }
+
       const result = await signInWithPopup(auth, provider);
       await bootstrapSession(await result.user.getIdToken(true));
+      shouldReset = false;
     } catch (nextError) {
-      if (shouldFallbackToRedirectFromPopupError(nextError, popupOpenedAtMs)) {
+      await clearClientSession();
+      const code =
+        typeof nextError === "object" && nextError && "code" in nextError
+          ? String(nextError.code)
+          : "";
+
+      if (
+        code === "auth/popup-blocked" ||
+        code === "auth/operation-not-supported-in-this-environment"
+      ) {
         try {
           setPhase("redirecting");
           setStatus({
@@ -348,29 +301,23 @@ export function LoginPanel({
             title: messages.loginStatusRedirectingTitle,
             body: messages.loginStatusRedirectingBody,
           });
-
-          /* Login page fallback continuity marker:
-             This flag tracks popup-to-redirect handoff so the redirect return path can
-             recover the flow and surface actionable status if browser storage/policies
-             interrupt getRedirectResult. Keep this scoped to regular login only. */
-          persistRedirectIntent("popup_fallback");
-
           const redirectAuth = await getEphemeralFirebaseClientAuth();
           redirectAuth.languageCode = locale;
+          shouldReset = false;
           await signInWithRedirect(redirectAuth, createGoogleProvider());
           return;
         } catch (redirectError) {
-          clearRedirectIntent();
-          await clearClientSession();
           setPhase("idle");
           setStatus(mapRegularLoginError(redirectError, messages));
-          return;
         }
+      } else {
+        setPhase("idle");
+        setStatus(mapRegularLoginError(nextError, messages));
       }
-
-      await clearClientSession();
-      setPhase("idle");
-      setStatus(mapRegularLoginError(nextError, messages));
+    } finally {
+      if (shouldReset) {
+        setPhase("idle");
+      }
     }
   }
 

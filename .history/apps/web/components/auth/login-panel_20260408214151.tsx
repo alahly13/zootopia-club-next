@@ -138,10 +138,6 @@ export function LoginPanel({
   firebaseAdminReady,
 }: LoginPanelProps) {
   const router = useRouter();
-  /* Login page bootstrap ownership guard:
-     Regular user auth must create exactly one server session handoff per successful sign-in.
-     This ref deduplicates overlapping bootstrap attempts from popup/redirect race edges.
-     Future changes must keep bootstrap authority on /api/auth/bootstrap (server side). */
   const bootstrapRequestRef = useRef<Promise<void> | null>(null);
   const [phase, setPhase] = useState<RegularLoginPhase>("idle");
   const [status, setStatus] = useState<AuthStatusDescriptor | null>(null);
@@ -189,9 +185,6 @@ export function LoginPanel({
     const requestPromise = (async () => {
       setFinishingStatus();
 
-      /* Login page network safety timeout:
-         Bootstrap is security-critical and should never leave UI in a perpetual busy state.
-         Abort and surface BOOTSTRAP_TIMEOUT so users can retry cleanly without stale spinners. */
       const controller = new AbortController();
       const timeoutHandle = window.setTimeout(() => {
         controller.abort();
@@ -256,10 +249,6 @@ export function LoginPanel({
     }
 
     let cancelled = false;
-    /* Redirect return continuity check:
-       Popup fallback stores a same-tab intent marker before full-page redirect.
-       On return, this lets regular login recover state and report actionable refresh guidance
-       if browser policies/storage drop redirect result state. */
     const redirectIntent = readRedirectIntent();
 
     if (redirectIntent) {

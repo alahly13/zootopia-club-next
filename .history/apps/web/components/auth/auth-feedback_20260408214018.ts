@@ -159,7 +159,6 @@ export function mapRegularLoginError(
         messages.loginStatusRedirectingBody,
       );
     case "RECENT_SIGN_IN_REQUIRED":
-    case "REDIRECT_RESULT_MISSING":
       return status(
         "warning",
         "warning",

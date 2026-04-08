@@ -256,11 +256,11 @@ export function LoginPanel({
     }
 
     let cancelled = false;
-    /* Redirect return continuity check:
+     /* Redirect return continuity check:
        Popup fallback stores a same-tab intent marker before full-page redirect.
        On return, this lets regular login recover state and report actionable refresh guidance
        if browser policies/storage drop redirect result state. */
-    const redirectIntent = readRedirectIntent();
+     const redirectIntent = readRedirectIntent();
 
     if (redirectIntent) {
       setPhase("redirecting");
