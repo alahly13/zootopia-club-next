@@ -123,6 +123,48 @@
 			"type": "shell",
 			"command": "$report = Get-Content 'output/playwright/assessment-actions-auth/2026-04-07T12-21-18-727Z/assessment-actions-auth-qa-report.json' -Raw | ConvertFrom-Json; $rows = foreach ($c in $report.combinations) { $groupOverflow = @($c.toolbarMetrics.groups | Where-Object { $_.overflow -eq $true }).Count -gt 0; $pass = $c.isExpectedRoute -and (-not $c.horizontalOverflow) -and $c.toolbarMetrics.present -and (-not $c.toolbarMetrics.overflow) -and (-not $groupOverflow); [PSCustomObject]@{ route=$c.routeLabel; theme=$c.theme; viewport=$c.viewport.name; pass=$pass } }; $rows | Sort-Object route, theme, viewport | Format-Table -AutoSize",
 			"isBackground": false
+		},
+		{
+			"label": "audit-lint-once",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"lint",
+				"--workspace",
+				"@zootopia/web"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "fix-eperm-remove-agent-base",
+			"type": "shell",
+			"command": "$target='apps/web/node_modules/agent-base'; if (Test-Path $target) { attrib -R \"$target\\*\" /S /D 2>$null; try { Remove-Item $target -Recurse -Force -ErrorAction Stop; Write-Output \"Removed $target\" } catch { Write-Output \"REMOVE_FAILED: $($_.Exception.Message)\"; exit 1 } } else { Write-Output \"Target missing\" }",
+			"isBackground": false
+		},
+		{
+			"label": "fix-eperm-npm-install",
+			"type": "shell",
+			"command": "npm install",
+			"isBackground": false
+		},
+		{
+			"label": "kill-stale-next-build-procs",
+			"type": "shell",
+			"command": "$buildProcs = Get-CimInstance Win32_Process | Where-Object { $_.Name -eq 'node.exe' -and $_.CommandLine -match 'zootopia-club-next' -and ($_.CommandLine -match 'run build' -or $_.CommandLine -match 'next\\\\dist\\\\bin\\\\next\" build' -or $_.CommandLine -match '\\\\.next\\\\build\\\\postcss\\\\.js') }; if ($buildProcs) { foreach ($proc in $buildProcs) { Stop-Process -Id $proc.ProcessId -Force -ErrorAction SilentlyContinue; Write-Output \"Stopped build process $($proc.ProcessId)\" } } else { Write-Output 'No matching build processes found' }",
+			"isBackground": false
+		},
+		{
+			"label": "web-build-mem-cpu-check",
+			"type": "shell",
+			"command": "npm run build --workspace @zootopia/web; Write-Output (\"BUILD_EXIT_CODE=$LASTEXITCODE\"); if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }",
+			"isBackground": false
+		},
+		{
+			"label": "web-build-confirm-once",
+			"type": "shell",
+			"command": "npm run build --workspace @zootopia/web",
+			"isBackground": false
 		}
 	]
 }

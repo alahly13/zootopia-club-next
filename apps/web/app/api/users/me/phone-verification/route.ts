@@ -1,3 +1,5 @@
+import { getPhoneNumberMetadata } from "@zootopia/shared-utils";
+
 import {
   getDecodedSignInProvider,
   hasRecentSignIn,
@@ -7,12 +9,15 @@ import {
   getFirebaseAdminAuth,
   hasFirebaseAdminRuntime,
 } from "@/lib/server/firebase-admin";
+import { checkRequestRateLimit } from "@/lib/server/request-rate-limit";
 import { updateUserPhoneVerification } from "@/lib/server/repository";
 import { getAuthenticatedSessionUser } from "@/lib/server/session";
 
 export const runtime = "nodejs";
 
 const E164_PHONE_PATTERN = /^\+[1-9]\d{6,14}$/;
+const PHONE_VERIFICATION_RATE_LIMIT_MAX_REQUESTS = 8;
+const PHONE_VERIFICATION_RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 
 export async function POST(request: Request) {
   const user = await getAuthenticatedSessionUser();
@@ -22,6 +27,29 @@ export async function POST(request: Request) {
       "Sign in is required to verify your phone number.",
       401,
     );
+  }
+
+  /* Settings phone OTP confirmation remains Firebase-owned, but this server receipt endpoint
+     still needs basic throttling so repeated token replay attempts cannot hammer the self-only
+     verification write path. Keep the scope narrow to this route and preserve session ownership. */
+  const rateLimit = checkRequestRateLimit({
+    request,
+    scope: "settings-phone-verification",
+    maxRequests: PHONE_VERIFICATION_RATE_LIMIT_MAX_REQUESTS,
+    windowMs: PHONE_VERIFICATION_RATE_LIMIT_WINDOW_MS,
+  });
+  if (!rateLimit.allowed) {
+    const blocked = apiError(
+      "PHONE_VERIFICATION_RATE_LIMITED",
+      "Too many phone verification attempts. Please retry shortly.",
+      429,
+    );
+    blocked.headers.set("Retry-After", String(rateLimit.retryAfterSeconds));
+    blocked.headers.set(
+      "X-RateLimit-Reset",
+      String(Math.ceil(rateLimit.resetAtMs / 1000)),
+    );
+    return blocked;
   }
 
   if (!hasFirebaseAdminRuntime()) {
@@ -80,14 +108,29 @@ export async function POST(request: Request) {
         400,
       );
     }
+    const phoneMetadata = getPhoneNumberMetadata(phoneNumber);
+    if (!phoneMetadata) {
+      return apiError(
+        "PHONE_NUMBER_INVALID",
+        "Verified phone number must be a possible international number.",
+        400,
+      );
+    }
 
     /* Keep profile ownership server-authoritative by always attaching the verified phone
        to the signed-in session user, never to the uid inside the submitted phone token. */
     const updatedUser = await updateUserPhoneVerification(user.uid, {
-      phoneNumber,
+      phoneNumber: phoneMetadata.e164,
     });
 
-    return apiSuccess({ user: updatedUser });
+    return apiSuccess({
+      user: {
+        phoneNumber: updatedUser.phoneNumber,
+        phoneVerifiedAt: updatedUser.phoneVerifiedAt,
+        phoneCountryIso2: updatedUser.phoneCountryIso2 ?? null,
+        phoneCountryCallingCode: updatedUser.phoneCountryCallingCode ?? null,
+      },
+    });
   } catch {
     return apiError(
       "PHONE_VERIFICATION_FAILED",

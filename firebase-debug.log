@@ -1,0 +1,68 @@
+[debug] [2026-04-07T21:31:51.541Z] ----------------------------------------------------------------------
+[debug] [2026-04-07T21:31:51.545Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\alahlyeagle13\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js deploy
+[debug] [2026-04-07T21:31:51.545Z] CLI Version:   15.12.0
+[debug] [2026-04-07T21:31:51.545Z] Platform:      win32
+[debug] [2026-04-07T21:31:51.545Z] Node Version:  v24.14.1
+[debug] [2026-04-07T21:31:51.545Z] Time:          Tue Apr 07 2026 21:31:51 GMT+0000 (Greenwich Mean Time)
+[debug] [2026-04-07T21:31:51.546Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-04-07T21:32:04.029Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-04-07T21:32:04.030Z] > authorizing via signed-in user (alahlyeagle13@gmail.com)
+[debug] [2026-04-07T21:32:04.030Z] [iam] checking project zootopia2026 for permissions ["datastore.indexes.create","datastore.indexes.delete","datastore.indexes.list","datastore.indexes.update","firebase.projects.get","firebaserules.releases.create","firebaserules.releases.update","firebaserules.rulesets.create"]
+[debug] [2026-04-07T21:32:04.031Z] Checked if tokens are valid: false, expires at: 1775592095164
+[debug] [2026-04-07T21:32:04.032Z] Checked if tokens are valid: false, expires at: 1775592095164
+[debug] [2026-04-07T21:32:04.032Z] > refreshing access token with scopes: []
+[debug] [2026-04-07T21:32:04.035Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-04-07T21:32:04.035Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-04-07T21:32:04.673Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2026-04-07T21:32:04.674Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-04-07T21:32:04.712Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/zootopia2026:testIamPermissions [none]
+[debug] [2026-04-07T21:32:04.712Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/zootopia2026:testIamPermissions  x-goog-user-project=zootopia2026
+[debug] [2026-04-07T21:32:04.712Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/zootopia2026:testIamPermissions {"permissions":["datastore.indexes.create","datastore.indexes.delete","datastore.indexes.list","datastore.indexes.update","firebase.projects.get","firebaserules.releases.create","firebaserules.releases.update","firebaserules.rulesets.create"]}
+[debug] [2026-04-07T21:32:05.570Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/zootopia2026:testIamPermissions 200
+[debug] [2026-04-07T21:32:05.570Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/zootopia2026:testIamPermissions {"permissions":["datastore.indexes.create","datastore.indexes.delete","datastore.indexes.list","datastore.indexes.update","firebase.projects.get","firebaserules.releases.create","firebaserules.releases.update","firebaserules.rulesets.create"]}
+[info] 
+[info] === Deploying to 'zootopia2026'...
+[info] 
+[info] i  deploying storage, firestore, apphosting 
+[info] i  storage: ensuring required API firebasestorage.googleapis.com is enabled... 
+[debug] [2026-04-07T21:32:06.735Z] Checked if tokens are valid: true, expires at: 1775601123674
+[debug] [2026-04-07T21:32:06.735Z] Checked if tokens are valid: true, expires at: 1775601123674
+[debug] [2026-04-07T21:32:06.735Z] >>> [apiv2][query] GET https://firebasestorage.googleapis.com/v1alpha/projects/zootopia2026/defaultBucket [none]
+[debug] [2026-04-07T21:32:08.380Z] <<< [apiv2][status] GET https://firebasestorage.googleapis.com/v1alpha/projects/zootopia2026/defaultBucket 200
+[debug] [2026-04-07T21:32:08.380Z] <<< [apiv2][body] GET https://firebasestorage.googleapis.com/v1alpha/projects/zootopia2026/defaultBucket {"name":"projects/zootopia2026/defaultBucket","location":"US-CENTRAL1","bucket":{"name":"projects/zootopia2026/buckets/zootopia2026.firebasestorage.app"},"storageClass":"REGIONAL"}
+[info] i  firebase.storage: checking firebase/storage.rules for compilation errors... 
+[debug] [2026-04-07T21:32:08.571Z] Checked if tokens are valid: true, expires at: 1775601123674
+[debug] [2026-04-07T21:32:08.571Z] Checked if tokens are valid: true, expires at: 1775601123674
+[debug] [2026-04-07T21:32:08.571Z] >>> [apiv2][query] POST https://firebaserules.googleapis.com/v1/projects/zootopia2026:test [none]
+[debug] [2026-04-07T21:32:08.571Z] >>> [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/zootopia2026:test [omitted]
+[debug] [2026-04-07T21:32:09.406Z] <<< [apiv2][status] POST https://firebaserules.googleapis.com/v1/projects/zootopia2026:test 200
+[debug] [2026-04-07T21:32:09.406Z] <<< [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/zootopia2026:test {}
+[info] +  firebase.storage: rules file firebase/storage.rules compiled successfully 
+[info] i  firestore: ensuring required API firestore.googleapis.com is enabled... 
+[info] i  firestore: ensuring required API firestore.googleapis.com is enabled... 
+[debug] [2026-04-07T21:32:10.717Z] Checked if tokens are valid: true, expires at: 1775601123674
+[debug] [2026-04-07T21:32:10.717Z] Checked if tokens are valid: true, expires at: 1775601123674
+[debug] [2026-04-07T21:32:10.717Z] >>> [apiv2][query] GET https://firestore.googleapis.com/v1/projects/zootopia2026/databases/zootopia-club-next-database [none]
+[debug] [2026-04-07T21:32:13.811Z] <<< [apiv2][status] GET https://firestore.googleapis.com/v1/projects/zootopia2026/databases/zootopia-club-next-database 200
+[debug] [2026-04-07T21:32:13.811Z] <<< [apiv2][body] GET https://firestore.googleapis.com/v1/projects/zootopia2026/databases/zootopia-club-next-database {"name":"projects/zootopia2026/databases/zootopia-club-next-database","uid":"d5d10e59-a2ef-402d-a282-d9e2a295a76f","createTime":"2026-04-01T03:23:44.935197Z","updateTime":"2026-04-01T03:23:44.935197Z","locationId":"nam5","type":"FIRESTORE_NATIVE","concurrencyMode":"OPTIMISTIC","versionRetentionPeriod":"3600s","earliestVersionTime":"2026-04-07T20:32:11.722217Z","appEngineIntegrationMode":"DISABLED","pointInTimeRecoveryEnablement":"POINT_IN_TIME_RECOVERY_DISABLED","deleteProtectionState":"DELETE_PROTECTION_DISABLED","databaseEdition":"ENTERPRISE","freeTier":false,"realtimeUpdatesMode":"REALTIME_UPDATES_MODE_ENABLED","firestoreDataAccessMode":"DATA_ACCESS_MODE_ENABLED","mongodbCompatibleDataAccessMode":"DATA_ACCESS_MODE_DISABLED","etag":"ILjfkaHY3JMDMMao4570zZMD"}
+[info] i  firestore: reading indexes from firebase/firestore.indexes.json... 
+[info] i  cloud.firestore: checking firebase/firestore.rules for compilation errors... 
+[debug] [2026-04-07T21:32:17.192Z] Checked if tokens are valid: true, expires at: 1775601123674
+[debug] [2026-04-07T21:32:17.192Z] Checked if tokens are valid: true, expires at: 1775601123674
+[debug] [2026-04-07T21:32:17.192Z] >>> [apiv2][query] POST https://firebaserules.googleapis.com/v1/projects/zootopia2026:test [none]
+[debug] [2026-04-07T21:32:17.192Z] >>> [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/zootopia2026:test [omitted]
+[debug] [2026-04-07T21:32:17.833Z] <<< [apiv2][status] POST https://firebaserules.googleapis.com/v1/projects/zootopia2026:test 200
+[debug] [2026-04-07T21:32:17.833Z] <<< [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/zootopia2026:test {}
+[info] +  cloud.firestore: rules file firebase/firestore.rules compiled successfully 
+[debug] [2026-04-07T21:32:18.784Z] Checked if tokens are valid: true, expires at: 1775601123674
+[debug] [2026-04-07T21:32:18.785Z] Checked if tokens are valid: true, expires at: 1775601123674
+[debug] [2026-04-07T21:32:18.785Z] >>> [apiv2][query] POST https://iam.googleapis.com/v1/projects/zootopia2026/serviceAccounts/firebase-app-hosting-compute@zootopia2026.iam.gserviceaccount.com:testIamPermissions [none]
+[debug] [2026-04-07T21:32:18.785Z] >>> [apiv2][(partial)header] POST https://iam.googleapis.com/v1/projects/zootopia2026/serviceAccounts/firebase-app-hosting-compute@zootopia2026.iam.gserviceaccount.com:testIamPermissions  x-goog-user-project=zootopia2026
+[debug] [2026-04-07T21:32:18.785Z] >>> [apiv2][body] POST https://iam.googleapis.com/v1/projects/zootopia2026/serviceAccounts/firebase-app-hosting-compute@zootopia2026.iam.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
+[debug] [2026-04-07T21:32:20.597Z] <<< [apiv2][status] POST https://iam.googleapis.com/v1/projects/zootopia2026/serviceAccounts/firebase-app-hosting-compute@zootopia2026.iam.gserviceaccount.com:testIamPermissions 200
+[debug] [2026-04-07T21:32:20.598Z] <<< [apiv2][body] POST https://iam.googleapis.com/v1/projects/zootopia2026/serviceAccounts/firebase-app-hosting-compute@zootopia2026.iam.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
+[debug] [2026-04-07T21:32:20.598Z] Checked if tokens are valid: true, expires at: 1775601123674
+[debug] [2026-04-07T21:32:20.598Z] Checked if tokens are valid: true, expires at: 1775601123674
+[debug] [2026-04-07T21:32:20.598Z] >>> [apiv2][query] POST https://iam.googleapis.com/v1/projects/zootopia2026/serviceAccounts [none]
+[debug] [2026-04-07T21:32:20.598Z] >>> [apiv2][body] POST https://iam.googleapis.com/v1/projects/zootopia2026/serviceAccounts {"accountId":"firebase-app-hosting-compute","serviceAccount":{"displayName":"Firebase App Hosting compute service account","description":"Default service account used to run builds and deploys for Firebase App Hosting"}}

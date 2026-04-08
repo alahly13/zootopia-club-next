@@ -14,5 +14,8 @@
       "**/.firebase",
       "**/node_modules"
     ]
-  }
+  },
+  // Windows cloud instances without dedicated GPU acceleration are generally
+  // more stable with software terminal rendering.
+  "terminal.integrated.gpuAcceleration": "off"
 }

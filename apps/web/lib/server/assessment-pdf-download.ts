@@ -35,6 +35,10 @@ const PDF_SURFACE_STABILITY_TIMEOUT_MS = 15_000;
 
 let fontProvisionPromise: Promise<void> | null = null;
 
+type ChromiumRuntimeWithFont = typeof chromium & {
+  font: (input: string) => Promise<string>;
+};
+
 function findLocalBrowserExecutablePath() {
   return LOCAL_BROWSER_CANDIDATES.find((candidate) => existsSync(candidate)) ?? null;
 }
@@ -54,7 +58,11 @@ async function provisionServerlessPdfFonts() {
     return fontProvisionPromise;
   }
 
-  fontProvisionPromise = chromium
+  /* The App Hosting/serverless Chromium runtime exposes `font()` for emoji font hydration, but
+     monorepo type resolution can pick an older sibling package surface that omits that method.
+     Keep this cast local to the PDF export lane so build/typecheck stay honest without widening
+     the rest of the protected workspace to a looser Chromium type. */
+  fontProvisionPromise = (chromium as ChromiumRuntimeWithFont)
     .font(EMOJI_FONT_URL)
     .then(() => undefined)
     .catch(() => undefined);

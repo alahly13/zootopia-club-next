@@ -1,0 +1,8 @@
+⚠ "next start" does not work with "output: standalone" configuration. Use "node .next/standalone/server.js" instead.
+npm error Lifecycle script `start` failed with error:
+npm error code 4294967295
+npm error path C:\zootopia-club-next\apps\web
+npm error workspace @zootopia/web@0.1.0
+npm error location C:\zootopia-club-next\apps\web
+npm error command failed
+npm error command C:\Windows\system32\cmd.exe /d /s /c next start
